@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InstrumentStatus {
+  DRAFT
+  ACTIVE
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  EXPIRED
+  SUSPENDED
+  RETIRED
+}
+
+enum ApplicationType {
+  INITIAL_VERIFICATION
+  PERIODIC_REVERIFICATION
+  AFTER_REPAIR
+  AFTER_RELOCATION
+  AFTER_ADJUSTMENT
+  SPECIAL_INSPECTION
+  APPEAL
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  AWAITING_DOCUMENTS
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  SCHEDULED
+  ASSIGNED
+  INSPECTION_IN_PROGRESS
+  PASSED
+  FAILED
+  CERTIFICATE_GENERATED
+  CERTIFICATE_ISSUED
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+  REJECTED
+  APPEAL_SUBMITTED
+}
+
+enum UserRole {
+  STATE_ADMINISTRATOR
+  LEGAL_METROLOGY_OFFICER
+  GATC_OPERATOR
+  APPLICANT_BUSINESS
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(APPLICANT_BUSINESS)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Organisation {
+  id          String       @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  jurisdiction String?
+  instruments Instrument[]
+  applications Application[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Instrument {
+  id             String           @id @default(uuid())
+  platformId     String           @unique
+  type           String
+  manufacturer   String
+  model          String
+  serialNumber   String
+  capacity       String?
+  location       String
+  status         InstrumentStatus  @default(DRAFT)
+  nextDueDate    DateTime?
+  ownerId        String
+  owner          Organisation     @relation(fields: [ownerId], references: [id])
+  applications   Application[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([manufacturer, serialNumber])
+  @@index([status, nextDueDate])
+  @@index([ownerId])
+}
+
+model Application {
+  id             String            @id @default(uuid())
+  applicationNo  String            @unique
+  type           ApplicationType
+  status         ApplicationStatus @default(DRAFT)
+  instrumentId   String
+  instrument     Instrument         @relation(fields: [instrumentId], references: [id])
+  applicantId    String
+  applicant      Organisation      @relation(fields: [applicantId], references: [id])
+  submittedAt    DateTime?
+  events         ApplicationEvent[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([instrumentId])
+}
+
+model ApplicationEvent {
+  id            String            @id @default(uuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id])
+  previousStatus ApplicationStatus?
+  newStatus     ApplicationStatus
+  reason        String?
+  actorId       String?
+  createdAt     DateTime          @default(now())
+
+  @@index([applicationId, createdAt])
+}
