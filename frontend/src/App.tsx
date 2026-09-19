@@ -1,6 +1,6 @@
 import './App.css'
 import { Bell, ChevronDown, CircleHelp, LockKeyhole, Mail, Menu, Search, Shield, ShieldCheck } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Sidebar } from './components/layout/Sidebar'
 import { StatCard } from './components/dashboard/StatCard'
 import { StatusBadge } from './components/ui/StatusBadge'
@@ -47,7 +47,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
     }
     setIsSubmitting(true)
     try {
-      const response = await fetch(`http://localhost:3000/api/auth/${mode === 'login' ? 'login' : 'signup'}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/${mode === 'login' ? 'login' : 'signup'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password, role: Object.entries(backendRoles).find(([, label]) => label === role)?.[0] }),
@@ -69,10 +69,11 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
 }
 
 function App() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    const savedSession = localStorage.getItem('measuresure-session')
-    return savedSession ? JSON.parse(savedSession) as AuthUser : null
-  })
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
+  useEffect(() => {
+    const savedSession = window.localStorage.getItem('measuresure-session')
+    if (savedSession) setCurrentUser(JSON.parse(savedSession) as AuthUser)
+  }, [])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSection, setActiveSection] = useState('Overview')
   const [searchTerm, setSearchTerm] = useState('')
