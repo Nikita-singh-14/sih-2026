@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import type { DashboardStat } from '../../types'
 
-const icons = { blue: '◒', teal: '✓', amber: '!', slate: '◷' }
+const icons: Record<string, string> = { blue: '◒', teal: '✓', amber: '!', slate: '◷', green: '✓' }
 
 export function StatCard({ label, value, trend, trendDirection, tone }: DashboardStat) {
   const TrendIcon = trendDirection === 'up' ? ArrowUpRight : trendDirection === 'down' ? ArrowDownRight : Minus
