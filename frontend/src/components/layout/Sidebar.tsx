@@ -38,7 +38,7 @@ const defaultNavigation = [
   { label: 'Applications', icon: ClipboardCheck, count: '248', roles: ['State Administrator', 'Applicant / Business'] },
   { label: 'Instruments', icon: Gauge, roles: ['State Administrator', 'Applicant / Business'] },
   { label: 'Certificates', icon: FileCheck2, roles: ['State Administrator', 'Applicant / Business'] },
-  { label: 'Field operations', icon: BarChart3, roles: ['State Administrator'] },
+  { label: 'Field operations', icon: BarChart3, roles: ['State Administrator', 'Applicant / Business'] },
 ]
 
 const lmoNavigation = [
@@ -139,7 +139,7 @@ export function Sidebar({ isOpen, activeSection, onNavigate, onClose, role, rawR
             <p className="nav-label">MANAGE</p>
             <nav>
               {['Stakeholders', 'Reports', 'Settings']
-                .filter((label) => role === 'State Administrator' || label === 'Reports')
+                .filter((label) => role === 'State Administrator' || role === 'Applicant / Business' || label === 'Reports')
                 .map((label) => (
                   <a
                     key={label}
