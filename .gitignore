@@ -1,0 +1,21 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Node modules & build outputs
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Credentials and Local Databases
+.env
+.env.*
+*.db
+*.sqlite
+
+# OS and Editor files
+.DS_Store
+.vscode
+.idea

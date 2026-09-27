@@ -5,8 +5,41 @@ import { Sidebar } from './components/layout/Sidebar'
 import { StatCard } from './components/dashboard/StatCard'
 import { LmoDashboard } from './components/dashboard/LmoDashboard'
 import { GatcDashboard } from './components/dashboard/GatcDashboard'
+import { BusinessDashboard } from './components/business/BusinessDashboard'
+import { StateAdminWorkspaces } from './components/admin/StateAdminWorkspaces'
+import { StateAdminOverview } from './components/admin/StateAdminOverview'
+import { StateAdminApplications } from './components/admin/StateAdminApplications'
+import { StateAdminInstruments } from './components/admin/StateAdminInstruments'
+import { StateAdminCertificates } from './components/admin/StateAdminCertificates'
+import { StateAdminFieldOperations } from './components/admin/StateAdminFieldOperations'
+import { StateAdminStakeholders } from './components/admin/StateAdminStakeholders'
+import { StateAdminReports } from './components/admin/StateAdminReports'
+import { StateAdminSettings } from './components/admin/StateAdminSettings'
+import './components/business/BusinessDashboard.css'
+import './components/admin/StateAdmin.css'
 import { StatusBadge } from './components/ui/StatusBadge'
 import { applications, dashboardStats, instruments, notifications, upcomingVisits } from './features/dashboard/data'
+import {
+  initialAdminApplications,
+  initialAdminCertificates,
+  initialAdminInspections,
+  initialAdminInstruments,
+  initialAdminOfficers,
+  initialApplicants,
+  initialGatcOfficersList,
+  initialLmoOfficersList,
+} from './features/admin/adminData'
+import type {
+  AdminApplicantStakeholder,
+  AdminApplication,
+  AdminApplicationStatus,
+  AdminCertificate,
+  AdminFieldInspection,
+  AdminGatcOfficerStakeholder,
+  AdminInstrument,
+  AdminLmoOfficerStakeholder,
+  AdminOfficer,
+} from './features/admin/adminTypes'
 import type { ApplicationStatus, AuthUser, Instrument, InstrumentStatus, Role } from './types';
 import MyAssignments from './components/lmo/MyAssignments';
 import TodaysRoute from './components/lmo/TodaysRoute';
@@ -201,12 +234,289 @@ function App() {
   const [applicationRecords, setApplicationRecords] = useState(applications)
   const [registry, setRegistry] = useState(instruments)
 
+  // State Administrator Management Workspace State
+  const [adminApplications, setAdminApplications] = useState<AdminApplication[]>(initialAdminApplications)
+  const [adminInstruments, setAdminInstruments] = useState<AdminInstrument[]>(initialAdminInstruments)
+  const [adminCertificates, setAdminCertificates] = useState<AdminCertificate[]>(initialAdminCertificates)
+  const [adminInspections, setAdminInspections] = useState<AdminFieldInspection[]>(initialAdminInspections)
+  const [adminApplicants] = useState<AdminApplicantStakeholder[]>(initialApplicants)
+  const [adminLmos] = useState<AdminLmoOfficerStakeholder[]>(initialLmoOfficersList)
+  const [adminGatcs] = useState<AdminGatcOfficerStakeholder[]>(initialGatcOfficersList)
+  const [adminOfficers] = useState<AdminOfficer[]>(initialAdminOfficers)
+  const [appFilterStatus, setAppFilterStatus] = useState<string>('All')
+  const [instFilterStatus, setInstFilterStatus] = useState<string>('All')
+
   const isLmo = currentUser?.role === 'Legal Metrology Officer' || currentUser?.rawRole === 'LEGAL_METROLOGY_OFFICER'
   const isGatc =
     currentUser?.role === 'GATC Officer' ||
     currentUser?.rawRole === 'GATC_OFFICER' ||
     currentUser?.role === 'GATC Operator' ||
     currentUser?.rawRole === 'GATC_OPERATOR'
+  const isBusiness =
+    currentUser?.role === 'Applicant / Business' ||
+    currentUser?.rawRole === 'APPLICANT_BUSINESS'
+
+  const userJurisdiction =
+    currentUser?.jurisdiction?.state ||
+    currentUser?.jurisdiction?.district ||
+    'DELHI'
+
+  const handleOverviewNavigateToApplications = (filterStatus: string = 'All') => {
+    setAppFilterStatus(filterStatus)
+    setActiveSection('Applications')
+    setSidebarOpen(false)
+    showFeedback(`Applications workspace filtered by ${filterStatus}`)
+  }
+
+  const handleOverviewNavigateToInstruments = (filterStatus: string = 'All') => {
+    setInstFilterStatus(filterStatus)
+    setActiveSection('Instruments')
+    setSidebarOpen(false)
+    showFeedback(`Instruments workspace filtered by ${filterStatus}`)
+  }
+
+  const handleUpdateApplicationStatus = (id: string, newStatus: AdminApplicationStatus, remarksText?: string) => {
+    setAdminApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== id) return app
+        const updatedRemarks = remarksText
+          ? [
+              ...app.remarks,
+              {
+                id: `rem-${Date.now()}`,
+                author: 'State Administrator',
+                role: 'State Admin',
+                date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                text: remarksText,
+              },
+            ]
+          : app.remarks
+        const updatedHistory = [
+          {
+            id: `hist-${Date.now()}`,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            action: `Marked as ${newStatus}`,
+            by: 'State Administrator',
+            notes: remarksText || undefined,
+          },
+          ...app.history,
+        ]
+        return {
+          ...app,
+          status: newStatus,
+          remarks: updatedRemarks,
+          history: updatedHistory,
+        }
+      })
+    )
+    showFeedback(`Application ${id} status updated to ${newStatus}`)
+  }
+
+  const handleAssignOfficer = (id: string, officerName: string) => {
+    setAdminApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== id) return app
+        const officerObj = adminOfficers.find((o) => o.name === officerName)
+        const updatedHistory = [
+          {
+            id: `hist-${Date.now()}`,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            action: officerName ? `Assigned to ${officerName}` : 'Unassigned Officer',
+            by: 'State Administrator',
+          },
+          ...app.history,
+        ]
+        return {
+          ...app,
+          assignedOfficer: officerName,
+          assignedOfficerEmail: officerObj?.email,
+          status: app.status === 'Pending Review' ? ('Assigned' as AdminApplicationStatus) : app.status,
+          history: updatedHistory,
+        }
+      })
+    )
+    showFeedback(`Officer ${officerName || 'Unassigned'} allocated to ${id}`)
+  }
+
+  const handleAddRemark = (id: string, remarkText: string) => {
+    setAdminApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== id) return app
+        return {
+          ...app,
+          remarks: [
+            ...app.remarks,
+            {
+              id: `rem-${Date.now()}`,
+              author: 'State Administrator',
+              role: 'State Admin',
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+              text: remarkText,
+            },
+          ],
+        }
+      })
+    )
+    showFeedback(`Remark added to case ${id}`)
+  }
+
+  const handleAssignLmo = (id: string, lmoName: string) => {
+    setAdminInstruments((prev) =>
+      prev.map((inst) => (inst.id === id ? { ...inst, assignedLmo: lmoName } : inst))
+    )
+    showFeedback(`LMO ${lmoName || 'Unassigned'} allocated to ${id}`)
+  }
+
+  const handleMarkInspection = (id: string, notes?: string) => {
+    setAdminInstruments((prev) =>
+      prev.map((inst) =>
+        inst.id === id
+          ? {
+              ...inst,
+              markedForInspection: true,
+              inspectionNotes: notes || 'Marked for priority field inspection',
+              status: inst.status === 'Active' ? 'Pending Verification' : inst.status,
+            }
+          : inst
+      )
+    )
+    showFeedback(`Instrument ${id} marked for field inspection`)
+  }
+
+  const handleFlagInstrument = (id: string, reason: string) => {
+    setAdminInstruments((prev) =>
+      prev.map((inst) =>
+        inst.id === id
+          ? {
+              ...inst,
+              isFlagged: !inst.isFlagged,
+              flagReason: !inst.isFlagged ? reason || 'Flagged by State Administrator' : '',
+            }
+          : inst
+      )
+    )
+    showFeedback(`Instrument ${id} flag status updated`)
+  }
+
+  /* --- CERTIFICATE MANAGEMENT HANDLERS --- */
+  const handleVerifyCertificate = (id: string) => {
+    setAdminCertificates((prev) =>
+      prev.map((c) => {
+        if (c.id !== id) return c
+        const updatedHistory = [
+          {
+            id: `ch-${Date.now()}`,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            action: 'Certificate Verified by State Administrator',
+            by: 'State Administrator',
+          },
+          ...c.history,
+        ]
+        return { ...c, isVerified: true, history: updatedHistory }
+      })
+    )
+    showFeedback(`Certificate ${id} verified by State Administrator`)
+  }
+
+  const handleFlagCertificate = (id: string, reason: string) => {
+    setAdminCertificates((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              isFlagged: !c.isFlagged,
+              status: !c.isFlagged ? 'Flagged' : 'Active',
+              flagReason: !c.isFlagged ? reason || 'Flagged discrepancy' : '',
+            }
+          : c
+      )
+    )
+    showFeedback(`Certificate ${id} flag status updated`)
+  }
+
+  /* --- FIELD OPERATIONS HANDLERS --- */
+  const handleAssignFieldOpsLmo = (id: string, lmoName: string) => {
+    setAdminInspections((prev) =>
+      prev.map((insp) => {
+        if (insp.id !== id) return insp
+        const updatedHistory = [
+          {
+            id: `ih-${Date.now()}`,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            action: `Reassigned to Officer ${lmoName}`,
+            by: 'State Administrator',
+          },
+          ...insp.history,
+        ]
+        return { ...insp, lmoOfficer: lmoName, history: updatedHistory }
+      })
+    )
+    showFeedback(`Inspection ${id} reassigned to ${lmoName}`)
+  }
+
+  const handleRescheduleInspection = (id: string, newDate: string, newTime: string) => {
+    setAdminInspections((prev) =>
+      prev.map((insp) => {
+        if (insp.id !== id) return insp
+        const updatedHistory = [
+          {
+            id: `ih-${Date.now()}`,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            action: `Rescheduled visit to ${newDate} (${newTime})`,
+            by: 'State Administrator',
+          },
+          ...insp.history,
+        ]
+        return { ...insp, scheduledDate: newDate, scheduledTime: newTime, history: updatedHistory }
+      })
+    )
+    showFeedback(`Inspection ${id} rescheduled to ${newDate}`)
+  }
+
+  const handleReviewInspectionReport = (id: string, decision: 'PASSED' | 'FAILED' | 'FLAGGED', notes: string) => {
+    setAdminInspections((prev) =>
+      prev.map((insp) => {
+        if (insp.id !== id) return insp
+        const updatedHistory = [
+          {
+            id: `ih-${Date.now()}`,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            action: `Admin Report Endorsement: ${decision}`,
+            by: 'State Administrator',
+          },
+          ...insp.history,
+        ]
+        return {
+          ...insp,
+          status: 'Completed',
+          reportSummary: {
+            decision,
+            notes: notes || 'Endorsed by State Administrator',
+            readings: insp.reportSummary?.readings || [],
+            photosCaptured: insp.reportSummary?.photosCaptured || 2,
+            sealVerified: decision === 'PASSED',
+          },
+          history: updatedHistory,
+        }
+      })
+    )
+    showFeedback(`Inspection ${id} report endorsed as ${decision}`)
+  }
+
+  const handleFlagInspection = (id: string, reason: string) => {
+    setAdminInspections((prev) =>
+      prev.map((insp) =>
+        insp.id === id
+          ? {
+              ...insp,
+              isFlagged: !insp.isFlagged,
+              flagReason: !insp.isFlagged ? reason || 'Flagged for audit' : '',
+            }
+          : insp
+      )
+    )
+    showFeedback(`Inspection ${id} flag status updated`)
+  }
 
   const filteredApplications = useMemo(
     () =>
@@ -360,303 +670,113 @@ function App() {
             />
           )}
 
-          {/* Non-LMO, Non-GATC Dashboard (Applicant/Business, State Admin) */}
-          {!isLmo && !isGatc && (
+          {/* Business / Applicant Account Dashboard */}
+          {isBusiness && (
+            <BusinessDashboard
+              currentUser={currentUser}
+              activeSection={activeSection}
+              onActionFeedback={showFeedback}
+              onNavigate={handleSectionChange}
+            />
+          )}
+
+          {/* State Administrator Dashboard */}
+          {!isLmo && !isGatc && !isBusiness && (
             <>
               <section className="page-heading">
                 <div>
-                  <p className="eyebrow">{currentUser.role.toUpperCase()} / DELHI</p>
+                  <p className="eyebrow">{currentUser.role.toUpperCase()} / {userJurisdiction.toUpperCase()}</p>
                   <h1>Good morning, {currentUser.name.split(' ')[0]}</h1>
                   <p className="heading-copy">Here is what needs your attention across the Legal Metrology network.</p>
                 </div>
-                <button className="primary-button" type="button" onClick={() => setShowRegistrationForm(true)}>
-                  <ShieldCheck size={17} /> Register instrument
-                </button>
               </section>
 
               {activeSection === 'Overview' && (
-                <section className="stats-grid" aria-label="Verification summary">
-                  {dashboardStats.map((stat) => (
-                    <StatCard key={stat.label} {...stat} />
-                  ))}
-                </section>
-              )}
-
-              {activeSection === 'Overview' && (
-                <section className="content-grid">
-                  <div className="panel applications-panel">
-                    <div className="panel-header">
-                      <div>
-                        <p className="eyebrow">WORK QUEUE</p>
-                        <h2>Recent applications</h2>
-                      </div>
-                      <button
-                        className="text-button"
-                        type="button"
-                        onClick={() => {
-                          setSearchTerm('')
-                          setStatusFilter('All statuses')
-                          showFeedback('Showing all applications')
-                        }}
-                      >
-                        View all <span>→</span>
-                      </button>
-                    </div>
-                    <div className="table-toolbar">
-                      <div className="search-field">
-                        <Search size={16} />
-                        <input
-                          aria-label="Search applications"
-                          value={searchTerm}
-                          onChange={(event) => setSearchTerm(event.target.value)}
-                          placeholder="Search by application or instrument ID"
-                        />
-                      </div>
-                      <select
-                        className="filter-button"
-                        aria-label="Filter applications by status"
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                      >
-                        <option>All statuses</option>
-                        <option>Under review</option>
-                        <option>Scheduled</option>
-                        <option>Verified</option>
-                        <option>Awaiting documents</option>
-                      </select>
-                    </div>
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Application</th>
-                            <th>Instrument</th>
-                            <th>Applicant</th>
-                            <th>Submitted</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredApplications.map((application) => (
-                            <tr key={application.id}>
-                              <td>
-                                <strong>{application.id}</strong>
-                                <span>{application.type}</span>
-                              </td>
-                              <td>
-                                <strong>{application.instrumentId}</strong>
-                                <span>{application.instrument}</span>
-                              </td>
-                              <td>{application.applicant}</td>
-                              <td>{application.submitted}</td>
-                              <td>
-                                <StatusBadge status={application.status} />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {filteredApplications.length === 0 && <p className="empty-state">No applications match your search.</p>}
-                    </div>
-                  </div>
-                  <aside className="panel visits-panel">
-                    <div className="panel-header">
-                      <div>
-                        <p className="eyebrow">FIELD OPERATIONS</p>
-                        <h2>Upcoming visits</h2>
-                      </div>
-                      <button className="icon-button" type="button" aria-label="View calendar" onClick={() => showFeedback('Calendar options opened')}>
-                        •••
-                      </button>
-                    </div>
-                    <div className="visits-list">
-                      {upcomingVisits.map((visit) => (
-                        <div className="visit-item" key={visit.time}>
-                          <div className="date-tile">
-                            <strong>{visit.day}</strong>
-                            <span>{visit.month}</span>
-                          </div>
-                          <div className="visit-details">
-                            <strong>{visit.title}</strong>
-                            <span>
-                              {visit.time} · {visit.location}
-                            </span>
-                            <small>{visit.officer}</small>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button className="secondary-button" type="button" onClick={() => showFeedback('Calendar opened')}>
-                      Open calendar <span>→</span>
-                    </button>
-                  </aside>
-                </section>
+                <StateAdminOverview
+                  applications={adminApplications}
+                  instruments={adminInstruments}
+                  officers={adminOfficers}
+                  upcomingVisitsList={upcomingVisits}
+                  onNavigateToApplications={handleOverviewNavigateToApplications}
+                  onNavigateToInstruments={handleOverviewNavigateToInstruments}
+                  onNavigateToSection={handleSectionChange}
+                  onUpdateStatus={handleUpdateApplicationStatus}
+                  onAssignOfficer={handleAssignOfficer}
+                  onAddRemark={handleAddRemark}
+                />
               )}
 
               {activeSection === 'Applications' && (
-                <section className="applications-dashboard">
-                  <div className="application-hero panel">
-                    <div>
-                      <p className="eyebrow">LEGAL METROLOGY WORK QUEUE</p>
-                      <h2>Verification applications</h2>
-                      <p>Review, schedule, and track initial verification and re-verification requests across Delhi.</p>
-                    </div>
-                    <div className="application-actions">
-                      <button className="secondary-button" type="button" onClick={() => setApplicationFormType('Re-verification')}>
-                        Re-verification
-                      </button>
-                      <button className="primary-button" type="button" onClick={() => setApplicationFormType('Initial verification')}>
-                        Initial verification
-                      </button>
-                    </div>
-                  </div>
-                  <div className="application-metrics">
-                    <article className="metric-card">
-                      <span>Total applications</span>
-                      <strong>{applicationSummary.total}</strong>
-                      <small>All active requests</small>
-                    </article>
-                    <article className="metric-card metric-review">
-                      <span>Under review</span>
-                      <strong>{applicationSummary.underReview}</strong>
-                      <small>Needs officer action</small>
-                    </article>
-                    <article className="metric-card metric-scheduled">
-                      <span>Scheduled</span>
-                      <strong>{applicationSummary.scheduled}</strong>
-                      <small>Ready for verification</small>
-                    </article>
-                    <article className="metric-card metric-verified">
-                      <span>Verified</span>
-                      <strong>{applicationSummary.verified}</strong>
-                      <small>Completed this cycle</small>
-                    </article>
-                  </div>
-                  <div className="workspace-panel panel">
-                    <div className="panel-header">
-                      <div>
-                        <p className="eyebrow">APPLICATION REGISTER</p>
-                        <h2>All applications</h2>
-                      </div>
-                      <span className="queue-count">{filteredApplications.length} shown</span>
-                    </div>
-                    <div className="table-toolbar">
-                      <div className="search-field">
-                        <Search size={16} />
-                        <input
-                          aria-label="Search applications"
-                          value={searchTerm}
-                          onChange={(event) => setSearchTerm(event.target.value)}
-                          placeholder="Search application, instrument, or applicant"
-                        />
-                      </div>
-                      <select
-                        className="filter-button"
-                        aria-label="Filter applications"
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                      >
-                        <option>All statuses</option>
-                        <option>Under review</option>
-                        <option>Scheduled</option>
-                        <option>Verified</option>
-                        <option>Awaiting documents</option>
-                      </select>
-                    </div>
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Application</th>
-                            <th>Instrument</th>
-                            <th>Applicant</th>
-                            <th>Submitted</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredApplications.map((application) => (
-                            <tr key={application.id}>
-                              <td>
-                                <strong>{application.id}</strong>
-                                <span>{application.type}</span>
-                              </td>
-                              <td>
-                                <strong>{application.instrumentId}</strong>
-                                <span>{application.instrument}</span>
-                              </td>
-                              <td>{application.applicant}</td>
-                              <td>{application.submitted}</td>
-                              <td>{renderStatus(application.status)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {filteredApplications.length === 0 && <p className="empty-state">No applications match your filters.</p>}
-                    </div>
-                  </div>
-                </section>
+                <StateAdminApplications
+                  applications={adminApplications}
+                  officers={adminOfficers}
+                  initialStatusFilter={appFilterStatus}
+                  onUpdateStatus={handleUpdateApplicationStatus}
+                  onAssignOfficer={handleAssignOfficer}
+                  onAddRemark={handleAddRemark}
+                />
               )}
 
               {activeSection === 'Instruments' && (
-                <section className="workspace-panel panel">
-                  <div className="panel-header">
-                    <div>
-                      <p className="eyebrow">REGISTRY</p>
-                      <h2>Instrument registry</h2>
-                    </div>
-                    <button className="primary-button" type="button" onClick={() => setShowRegistrationForm(true)}>
-                      <ShieldCheck size={17} /> Register instrument
-                    </button>
-                  </div>
-                  <div className="table-toolbar">
-                    <div className="search-field">
-                      <Search size={16} />
-                      <input
-                        aria-label="Search instruments"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search ID, serial number, owner or location"
-                      />
-                    </div>
-                  </div>
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Instrument</th>
-                          <th>Owner</th>
-                          <th>Location</th>
-                          <th>Next due</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredInstruments.map((instrument) => (
-                          <tr key={instrument.id}>
-                            <td>
-                              <strong>{instrument.id}</strong>
-                              <span>
-                                {instrument.type} · {instrument.manufacturer} {instrument.model}
-                              </span>
-                              <small>Serial {instrument.serialNumber}</small>
-                            </td>
-                            <td>{instrument.owner}</td>
-                            <td>{instrument.location}</td>
-                            <td>{instrument.nextDue}</td>
-                            <td>{renderStatus(instrument.status)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {filteredInstruments.length === 0 && <p className="empty-state">No instruments match your search.</p>}
-                  </div>
-                </section>
+                <StateAdminInstruments
+                  instruments={adminInstruments}
+                  officers={adminOfficers}
+                  initialStatusFilter={instFilterStatus}
+                  onAssignLmo={handleAssignLmo}
+                  onMarkInspection={handleMarkInspection}
+                  onFlagInstrument={handleFlagInstrument}
+                />
               )}
 
-              {['Certificates', 'Field operations', 'Stakeholders', 'Reports', 'Settings', 'Help centre', 'Signed out'].includes(
-                activeSection
-              ) && (
+              {activeSection === 'Certificates' && (
+                <StateAdminCertificates
+                  certificates={adminCertificates}
+                  onVerifyCertificate={handleVerifyCertificate}
+                  onFlagCertificate={handleFlagCertificate}
+                  onNavigateToInstruments={handleOverviewNavigateToInstruments}
+                />
+              )}
+
+              {activeSection === 'Field operations' && (
+                <StateAdminFieldOperations
+                  inspections={adminInspections}
+                  officers={adminOfficers}
+                  onAssignLmo={handleAssignFieldOpsLmo}
+                  onReschedule={handleRescheduleInspection}
+                  onReviewReport={handleReviewInspectionReport}
+                  onFlagInspection={handleFlagInspection}
+                />
+              )}
+
+              {activeSection === 'Stakeholders' && (
+                <StateAdminStakeholders
+                  applicants={adminApplicants}
+                  lmoOfficers={adminLmos}
+                  gatcOfficers={adminGatcs}
+                  onNavigateToApplications={handleOverviewNavigateToApplications}
+                  onNavigateToInstruments={handleOverviewNavigateToInstruments}
+                />
+              )}
+
+              {activeSection === 'Reports' && (
+                <StateAdminReports
+                  applications={adminApplications}
+                  instruments={adminInstruments}
+                  certificates={adminCertificates}
+                  inspections={adminInspections}
+                  officers={adminOfficers}
+                  jurisdictionState={userJurisdiction}
+                />
+              )}
+
+              {activeSection === 'Settings' && (
+                <StateAdminSettings
+                  currentUser={currentUser}
+                  onActionFeedback={showFeedback}
+                />
+              )}
+
+              {['Help centre', 'Signed out'].includes(activeSection) && (
                 <section className="workspace-panel panel empty-workspace">
                   <p className="eyebrow">{activeSection.toUpperCase()}</p>
                   <h2>
@@ -664,24 +784,9 @@ function App() {
                       ? 'Sign-out is ready for backend authentication'
                       : `${activeSection} workspace`}
                   </h2>
-                  <p>This module is now connected to navigation and ready for its next implementation slice from the platform plan.</p>
+                  <p>This module is now connected to navigation and ready for user actions.</p>
                   <button className="secondary-button" type="button" onClick={() => handleSectionChange('Overview')}>
                     Return to overview <span>→</span>
-                  </button>
-                </section>
-              )}
-
-              {activeSection === 'Overview' && (
-                <section className="notice-bar">
-                  <div className="notice-icon">
-                    <Bell size={17} />
-                  </div>
-                  <div>
-                    <strong>12 certificates expire in the next 30 days</strong>
-                    <span>Send renewal reminders to instrument owners before Friday.</span>
-                  </div>
-                  <button className="text-button" type="button" onClick={() => handleSectionChange('Certificates')}>
-                    Review certificates <span>→</span>
                   </button>
                 </section>
               )}
