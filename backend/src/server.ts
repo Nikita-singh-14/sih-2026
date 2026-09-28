@@ -55,6 +55,30 @@ function authenticate(request: AuthenticatedRequest, response: Response, next: N
   }
 }
 
+app.get('/', (_request, response) => {
+  response.json({
+    service: 'MeasureSure Legal Metrology API',
+    status: 'online',
+    frontend: 'http://localhost:5173',
+    version: '0.1.0',
+    endpoints: {
+      health: '/api/health',
+      auth: {
+        login: 'POST /api/auth/login',
+        signup: 'POST /api/auth/signup',
+        me: 'GET /api/auth/me',
+      },
+      business: '/api/business/*',
+      instruments: '/api/instruments',
+      applications: '/api/applications',
+    },
+  })
+})
+
+app.get('/api', (_request, response) => {
+  response.json({ status: 'ok', message: 'MeasureSure Legal Metrology API is running' })
+})
+
 app.get('/api/health', (_request, response) => response.json({ status: 'ok', service: 'measuresure-express' }))
 
 // Mount business routes for Applicant / Business role
