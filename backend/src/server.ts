@@ -1,156 +1,23 @@
 import 'dotenv/config'
 import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
-import { compare, hash } from 'bcryptjs'
 import { PrismaClient, UserRole } from '@prisma/client'
-import { sign, verify } from 'jsonwebtoken'
+
+import { authenticate, type AuthenticatedRequest } from './middleware/auth'
 import businessRouter from './routes/business'
+import { authRoutes } from './routes'
 
 const app = express()
 const prisma = new PrismaClient()
 const port = Number(process.env.PORT || 3000)
-const jwtSecret = process.env.JWT_SECRET || 'development-only-secret'
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }))
 app.use(express.json())
-
-interface AuthPayload {
-  sub: string
-  email: string
-  name: string
-  role: UserRole
-  organisationId?: string | null
-}
-
-type AuthenticatedRequest = Request & { user?: AuthPayload }
-
-function issueToken(user: { id: string; name: string; email: string; role: UserRole; organisationId?: string | null }) {
-  const payload: AuthPayload = {
-    sub: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    organisationId: user.organisationId,
-  }
-  return {
-    accessToken: sign(payload, jwtSecret, { expiresIn: '8h' }),
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      organisationId: user.organisationId,
-    },
-  }
-}
-
-function authenticate(request: AuthenticatedRequest, response: Response, next: NextFunction) {
-  const header = request.headers.authorization
-  if (!header?.startsWith('Bearer ')) return response.status(401).json({ message: 'Unauthorized' })
-  try {
-    request.user = verify(header.slice(7), jwtSecret) as AuthPayload
-    next()
-  } catch {
-    return response.status(401).json({ message: 'Unauthorized' })
-  }
-}
-
+app.use('/api/auth', authRoutes)
 app.get('/api/health', (_request, response) => response.json({ status: 'ok', service: 'measuresure-express' }))
 
 // Mount business routes for Applicant / Business role
 app.use('/api/business', businessRouter)
-
-app.post('/api/auth/signup', async (request, response) => {
-  const { name, email, password, role } = request.body as { name?: string; email?: string; password?: string; role?: UserRole }
-  const normalizedEmail = email?.trim().toLowerCase()
-  if (!name?.trim() || !normalizedEmail || !password || password.length < 6) {
-    return response.status(400).json({ message: 'Name, email, and a password of at least 6 characters are required' })
-  }
-  if (role && !Object.values(UserRole).includes(role)) {
-    return response.status(400).json({ message: 'Invalid role' })
-  }
-
-  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } })
-  if (existing) return response.status(409).json({ message: 'An account with this email already exists' })
-
-  const userRole = role || UserRole.APPLICANT_BUSINESS
-  let organisationId: string | null = null
-
-  if (userRole === UserRole.APPLICANT_BUSINESS) {
-    // Automatically provision an organization for this business user
-    const org = await prisma.organisation.create({
-      data: {
-        name: name.trim(),
-        email: normalizedEmail,
-        jurisdiction: 'South Delhi',
-        expiryAlertDays: 30,
-      },
-    })
-    organisationId = org.id
-  }
-
-  const user = await prisma.user.create({
-    data: {
-      name: name.trim(),
-      email: normalizedEmail,
-      passwordHash: await hash(password, 12),
-      role: userRole,
-      organisationId,
-    },
-  })
-
-  return response.status(201).json(issueToken(user))
-})
-
-app.post('/api/auth/login', async (request, response) => {
-  const { email, password } = request.body as { email?: string; password?: string }
-  const normalizedEmail = email?.trim().toLowerCase()
-  const user = normalizedEmail
-    ? await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-        include: { organisation: true },
-      })
-    : null
-
-  if (!user || !password || !(await compare(password, user.passwordHash))) {
-    return response.status(401).json({ message: 'Invalid email or password' })
-  }
-
-  // If business user doesn't have an organization, provision one now
-  if (user.role === UserRole.APPLICANT_BUSINESS && !user.organisationId) {
-    const org = await prisma.organisation.create({
-      data: {
-        name: user.name,
-        email: user.email,
-        jurisdiction: 'South Delhi',
-        expiryAlertDays: 30,
-      },
-    })
-    user.organisationId = org.id
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { organisationId: org.id },
-    })
-  }
-
-  return response.json(issueToken(user))
-})
-
-app.get('/api/auth/me', authenticate, async (request: AuthenticatedRequest, response) => {
-  const user = await prisma.user.findUnique({
-    where: { id: request.user!.sub },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      organisationId: true,
-      organisation: true,
-    },
-  })
-  if (!user) return response.status(404).json({ message: 'User not found' })
-  return response.json(user)
-})
 
 app.get('/api/instruments', async (request, response) => {
   const search = typeof request.query.search === 'string' ? request.query.search : undefined
