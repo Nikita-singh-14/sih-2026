@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:generate": "prisma generate",
+    "prisma:clean": "node -e \"const fs=require('fs'); const path=require('path'); const dir=path.join(process.cwd(),'node_modules','.prisma'); if (fs.existsSync(dir)) fs.rmSync(dir,{ recursive: true, force: true });\"",
+    "prisma:generate": "npm run prisma:clean && prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prebuild": "npm run prisma:generate",
