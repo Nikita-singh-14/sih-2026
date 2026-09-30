@@ -17,6 +17,7 @@ import { StateAdminFieldOperations } from './components/admin/StateAdminFieldOpe
 import { StateAdminStakeholders } from './components/admin/StateAdminStakeholders'
 import { StateAdminReports } from './components/admin/StateAdminReports'
 import { StateAdminSettings } from './components/admin/StateAdminSettings'
+import { CertificateComplaints } from './components/admin/CertificateComplaints'
 import './components/business/BusinessDashboard.css'
 import './components/admin/StateAdmin.css'
 import { StatusBadge } from './components/ui/StatusBadge'
@@ -690,6 +691,8 @@ function App() {
               {activeSection === 'Applications' && (
                 <VerificationReviewQueue />
               )}
+
+              {activeSection === 'Certificate complaints' && <CertificateComplaints />}
 
               {activeSection === 'Instruments' && (
                 <StateAdminInstruments

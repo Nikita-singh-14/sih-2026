@@ -47,6 +47,7 @@ import {
   X,
 } from 'lucide-react'
 import type { AuthUser, GatcSubmittedResult, GatcTestEquipment, GatcTestRequest } from '../../types'
+import { CertificateComplaints } from '../admin/CertificateComplaints'
 import {
   centreReadinessItems,
   evaluateGatcAllocation,
@@ -880,6 +881,8 @@ export function GatcDashboard({
           </section>
         </>
       )}
+
+      {activeSection === 'Certificate complaints' && <CertificateComplaints />}
 
       {/* TEST EQUIPMENT MODULE */}
       {activeSection === 'Test Equipment' && (

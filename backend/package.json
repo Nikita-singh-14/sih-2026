@@ -16,7 +16,8 @@
     "lint": "eslint \"src/server.ts\"",
     "test:e2e": "node tests/verification.e2e.mjs",
     "test:e2e:security": "node tests/signup-security.e2e.mjs",
-    "test:e2e:persistence": "node tests/persistence.e2e.mjs"
+    "test:e2e:persistence": "node tests/persistence.e2e.mjs",
+    "test:e2e:complaints": "node tests/complaints.e2e.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",

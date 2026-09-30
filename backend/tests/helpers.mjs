@@ -52,7 +52,27 @@ export async function createReviewer() {
   return { id: user.id, token: login.data.accessToken }
 }
 
-export async function cleanup({ userId, organisationId, reviewerId, instrumentId, applicationId } = {}) {
+export async function createGatcOperator() {
+  const id = randomUUID()
+  const password = 'gatc-test-password'
+  const user = await prisma.user.create({
+    data: {
+      name: 'E2E GATC Operator',
+      email: `gatc-${id}@example.test`,
+      passwordHash: await hash(password, 4),
+      role: UserRole.GATC_OPERATOR,
+    },
+  })
+  const login = await request('/auth/login', { method: 'POST', body: { email: user.email, password } })
+  assert.equal(login.response.status, 200, JSON.stringify(login.data))
+  return { id: user.id, token: login.data.accessToken }
+}
+
+export async function cleanup({ userId, organisationId, reviewerId, instrumentId, applicationId, complaintId } = {}) {
+  if (complaintId) {
+    await prisma.$executeRaw`DELETE FROM "CertificateComplaintEvent" WHERE "complaintId" = ${complaintId}`
+    await prisma.$executeRaw`DELETE FROM "CertificateComplaint" WHERE "id" = ${complaintId}`
+  }
   if (applicationId) {
     await prisma.applicationEvent.deleteMany({ where: { applicationId } })
     await prisma.application.deleteMany({ where: { id: applicationId } })

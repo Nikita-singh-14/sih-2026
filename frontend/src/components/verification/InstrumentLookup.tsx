@@ -31,6 +31,11 @@ export function InstrumentLookup() {
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [reportTarget, setReportTarget] = useState<{ identifier: string; instrument?: PublicInstrument } | null>(null)
+  const [reportCategory, setReportCategory] = useState<'CERTIFICATE_ISSUE' | 'SERIAL_MISMATCH'>('CERTIFICATE_ISSUE')
+  const [reportError, setReportError] = useState('')
+  const [reporting, setReporting] = useState(false)
+  const [reportReceipt, setReportReceipt] = useState('')
 
   const search = async (value: string) => {
     const normalized = value.trim()
@@ -60,6 +65,35 @@ export function InstrumentLookup() {
     }
   }, [])
 
+  const submitComplaint = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!reportTarget) return
+    const fields = new FormData(event.currentTarget)
+    setReporting(true)
+    setReportError('')
+    try {
+      const result = await apiRequest<{ complaint: { id: string } }>('/verification/complaints', {
+        method: 'POST',
+        body: JSON.stringify({
+          category: reportCategory,
+          searchedIdentifier: reportTarget.identifier,
+          instrumentId: reportTarget.instrument?.instrumentId,
+          certificateNo: reportTarget.instrument?.certificate?.certificateNo,
+          reportedSerialNumber: fields.get('reportedSerialNumber'),
+          reporterName: fields.get('reporterName'),
+          reporterEmail: fields.get('reporterEmail'),
+          description: fields.get('description'),
+        }),
+      })
+      setReportReceipt(result.complaint.id.slice(0, 8).toUpperCase())
+      setReportTarget(null)
+    } catch (submitError) {
+      setReportError(submitError instanceof Error ? submitError.message : 'Unable to submit the report')
+    } finally {
+      setReporting(false)
+    }
+  }
+
   return (
     <main className="verify-page">
       <header className="verify-topbar">
@@ -86,7 +120,12 @@ export function InstrumentLookup() {
       <section className="verify-results" aria-live="polite">
         {error && <p className="verify-message verify-error" role="alert">{error}</p>}
         {!error && searched && !loading && results.length === 0 && (
-          <p className="verify-message">No registered instrument or certificate matched “{identifier}”. Check the number and try again.</p>
+          <div className="verify-message verify-no-match">
+            <p>No registered instrument or certificate matched “{identifier}”. Check the number, or report a possible serial mismatch.</p>
+            <button type="button" className="verify-report-button" onClick={() => { setReportReceipt(''); setReportTarget({ identifier }) }}>
+              Report this problem
+            </button>
+          </div>
         )}
         {results.map((instrument) => {
           const valid = instrument.verificationStatus === 'VALID'
@@ -113,11 +152,55 @@ export function InstrumentLookup() {
                 {instrument.certificate && <div><dt>Issuing officer</dt><dd>{instrument.certificate.issuedBy}</dd></div>}
               </dl>
               <p className="verify-disclaimer">This public check confirms the current registry record. It does not replace inspection of the physical instrument and seal.</p>
+              <div className="verify-report-action">
+                <span>Found an issue with this certificate or the instrument serial?</span>
+                <button type="button" className="verify-report-button" onClick={() => { setReportReceipt(''); setReportTarget({ identifier, instrument }) }}>
+                  Report a problem
+                </button>
+              </div>
             </article>
           )
         })}
+        {reportReceipt && <p className="verify-message verify-report-success" role="status">Report received. Reference: {reportReceipt}. The Legal Metrology team will review it.</p>}
       </section>
       <footer className="verify-footer"><ShieldCheck size={15} /> MeasureSure · Legal Metrology verification register</footer>
+      {reportTarget && (
+        <div className="complaint-backdrop" role="presentation">
+          <section className="complaint-modal" role="dialog" aria-modal="true" aria-labelledby="complaint-title">
+            <header className="complaint-modal-header">
+              <div><span className="verify-kicker">PUBLIC REPORT</span><h2 id="complaint-title">Report a certificate problem</h2></div>
+              <button type="button" className="complaint-close" aria-label="Close report form" onClick={() => setReportTarget(null)}>×</button>
+            </header>
+            <p className="complaint-reference">Lookup reference: <strong>{reportTarget.identifier}</strong></p>
+            <form className="complaint-form" onSubmit={submitComplaint}>
+              <label>
+                Problem type
+                <select value={reportCategory} onChange={(event) => setReportCategory(event.target.value as typeof reportCategory)}>
+                  <option value="CERTIFICATE_ISSUE">Certificate details or validity look incorrect</option>
+                  <option value="SERIAL_MISMATCH">Serial number does not match the instrument</option>
+                </select>
+              </label>
+              {reportCategory === 'SERIAL_MISMATCH' && <label>
+                Serial number printed on the instrument
+                <input name="reportedSerialNumber" required maxLength={120} defaultValue={reportTarget.instrument?.serialNumber || ''} />
+              </label>}
+              <label>
+                What is wrong?
+                <textarea name="description" required minLength={10} maxLength={2000} rows={4} placeholder="Describe the mismatch or certificate issue" />
+              </label>
+              <div className="complaint-form-contact">
+                <label>Your name <input name="reporterName" maxLength={120} autoComplete="name" /></label>
+                <label>Contact email <input name="reporterEmail" type="email" maxLength={254} autoComplete="email" /></label>
+              </div>
+              {reportError && <p className="verify-error" role="alert">{reportError}</p>}
+              <div className="complaint-form-actions">
+                <button type="button" className="complaint-cancel" onClick={() => setReportTarget(null)}>Cancel</button>
+                <button type="submit" className="complaint-submit" disabled={reporting}>{reporting ? 'Submitting...' : 'Submit report'}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   )
 }

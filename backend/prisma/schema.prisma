@@ -207,3 +207,39 @@ model Notification {
   @@index([userId])
   @@index([organisationId])
 }
+
+model CertificateComplaint {
+  id                    String                    @id @default(uuid())
+  category              String
+  searchedIdentifier   String
+  instrumentId          String?
+  certificateNo         String?
+  reportedSerialNumber String?
+  reporterName          String?
+  reporterEmail         String?
+  description           String
+  status                String                    @default("New")
+  resolution            String?
+  events                CertificateComplaintEvent[]
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category, createdAt])
+  @@index([certificateNo])
+  @@index([instrumentId])
+}
+
+model CertificateComplaintEvent {
+  id          String              @id @default(uuid())
+  complaintId String
+  complaint   CertificateComplaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  previousStatus String?
+  newStatus   String
+  notes       String?
+  actorId     String?
+  actorRole   String?
+  createdAt   DateTime            @default(now())
+
+  @@index([complaintId, createdAt])
+}

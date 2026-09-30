@@ -88,7 +88,31 @@
 .verify-disclaimer { margin: 0; padding: 14px 22px 18px; color: #67766f; font-size: 12px; border-top: 1px solid #edf1ee; }
 .verify-message { padding: 18px; color: #51645c; background: #fff; border: 1px solid #dbe5df; border-radius: 7px; }
 .verify-error { color: #972d2d; }
+.verify-no-match p { margin: 0 0 12px; }
+.verify-report-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; color: #63756f; font-size: 12px; border-top: 1px solid #edf1ee; }
+.verify-report-button { padding: 9px 13px; color: #126b5d; background: #fff; border: 1px solid #a9c9bd; border-radius: 6px; font-weight: 700; }
+.verify-report-button:hover { background: #edf7f1; }
+.verify-report-success { color: #17644e; background: #edf7f1; border-color: #c5e3d3; }
 .verify-footer { justify-content: center; padding: 22px; color: #71827a; font-size: 12px; font-weight: 500; border-top: 1px solid #dfe7e3; }
+
+.complaint-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 18px; background: #102f2c70; backdrop-filter: blur(3px); }
+.complaint-modal { width: min(100%, 620px); max-height: calc(100vh - 36px); overflow: auto; padding: 24px; color: #172c35; background: #fff; border: 1px solid #dbe5df; border-radius: 9px; box-shadow: 0 24px 60px #102f2c30; }
+.complaint-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.complaint-modal-header h2 { margin: 6px 0 0; font-family: 'Manrope', sans-serif; font-size: 22px; }
+.complaint-close { width: 36px; height: 36px; color: #556b63; background: #fff; border: 1px solid #dbe5df; border-radius: 6px; font-size: 22px; line-height: 1; }
+.complaint-reference { margin: 14px 0 18px; color: #66786f; font-size: 12px; overflow-wrap: anywhere; }
+.complaint-reference strong { color: #243e3a; }
+.complaint-form { display: grid; gap: 14px; }
+.complaint-form label { display: grid; gap: 6px; min-width: 0; color: #334b44; font-size: 13px; font-weight: 600; }
+.complaint-form input, .complaint-form select, .complaint-form textarea { width: 100%; min-height: 42px; padding: 10px 11px; color: #1d3338; background: #fff; border: 1px solid #cbd8d2; border-radius: 6px; font: inherit; font-weight: 400; }
+.complaint-form textarea { min-height: 100px; resize: vertical; }
+.complaint-form input:focus, .complaint-form select:focus, .complaint-form textarea:focus { outline: 3px solid #0c8d8326; border-color: #0c8d83; }
+.complaint-form-contact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.complaint-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid #e7ece9; }
+.complaint-form-actions button { min-height: 40px; padding: 9px 14px; border-radius: 6px; font-weight: 700; }
+.complaint-cancel { color: #456159; background: white; border: 1px solid #cbd8d2; }
+.complaint-submit { color: white; background: #126b5d; border: 1px solid #126b5d; }
+.complaint-submit:disabled { opacity: .65; cursor: wait; }
 
 @media (max-width: 640px) {
   .verify-topbar { height: 58px; padding: 0 16px; }
@@ -100,4 +124,8 @@
   .verify-results { padding: 0 16px 32px; }
   .verify-facts { grid-template-columns: 1fr; padding: 8px 15px; }
   .verify-facts div { padding: 10px 5px; }
+  .verify-report-action { align-items: flex-start; flex-direction: column; padding: 14px 16px; }
+  .complaint-modal { padding: 18px; }
+  .complaint-form-contact { grid-template-columns: 1fr; }
+  .complaint-form-actions { flex-wrap: wrap-reverse; }
 }

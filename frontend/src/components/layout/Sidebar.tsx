@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   LogOut,
   MapPin,
+  MessageSquareWarning,
   Settings,
   Shield,
   ShieldCheck,
@@ -39,6 +40,7 @@ const defaultNavigation = [
   { label: 'Instruments', icon: Gauge, roles: ['State Administrator', 'Applicant / Business'] },
   { label: 'Certificates', icon: FileCheck2, roles: ['State Administrator', 'Applicant / Business'] },
   { label: 'Field operations', icon: BarChart3, roles: ['State Administrator', 'Applicant / Business'] },
+  { label: 'Certificate complaints', icon: MessageSquareWarning, roles: ['State Administrator'] },
 ]
 
 const lmoNavigation = [
@@ -61,6 +63,7 @@ const gatcNavigation = [
   { label: 'Test Equipment', icon: Wrench },
   { label: 'Submitted Results', icon: FileCheck2 },
   { label: 'Certificates', icon: ShieldCheck },
+  { label: 'Certificate complaints', icon: MessageSquareWarning },
   { label: 'Centre Reports', icon: BarChart3 },
   { label: 'Notifications', icon: Bell, count: '2' },
 ]
