@@ -82,7 +82,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
     }
     setIsSubmitting(true)
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/${mode === 'login' ? 'login' : 'signup'}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/api/auth/${mode === 'login' ? 'login' : 'signup'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password }),
