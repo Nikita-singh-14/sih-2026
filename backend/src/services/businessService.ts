@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { randomUUID } from 'node:crypto'
 
 const prisma = new PrismaClient()
 
@@ -189,8 +190,7 @@ export class BusinessService {
     }
 
     // Generate unique platformId
-    const randCode = Math.floor(1000 + Math.random() * 9000)
-    const platformId = `WM-DEL-${randCode}`
+    const platformId = `WM-DEL-${randomUUID().slice(0, 8).toUpperCase()}`
 
     const instrument = await prisma.instrument.create({
       data: {
@@ -347,7 +347,7 @@ export class BusinessService {
       throw new Error('Selected instrument was not found in your business fleet')
     }
 
-    const applicationNo = `LM-${new Date().getFullYear()}-0${Math.floor(8000 + Math.random() * 1999)}`
+    const applicationNo = `LM-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`
     const feeAmount = data.feeAmount ? Number(data.feeAmount) : 1500
 
     const application = await prisma.application.create({

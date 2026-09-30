@@ -5,6 +5,7 @@ import { PrismaClient, UserRole } from '@prisma/client'
 
 import { authenticate, type AuthenticatedRequest } from './middleware/auth'
 import businessRouter from './routes/business'
+import verificationRouter from './routes/verification'
 import { authRoutes } from './routes'
 
 const app = express()
@@ -14,6 +15,7 @@ const port = Number(process.env.PORT || 3000)
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }))
 app.use(express.json())
 app.use('/api/auth', authRoutes)
+app.use('/api', verificationRouter)
 app.get('/api/health', (_request, response) => response.json({ status: 'ok', service: 'measuresure-express' }))
 
 // Mount business routes for Applicant / Business role

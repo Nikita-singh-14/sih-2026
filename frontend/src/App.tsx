@@ -6,6 +6,8 @@ import { StatCard } from './components/dashboard/StatCard'
 import { LmoDashboard } from './components/dashboard/LmoDashboard'
 import { GatcDashboard } from './components/dashboard/GatcDashboard'
 import { BusinessDashboard } from './components/business/BusinessDashboard'
+import { InstrumentLookup } from './components/verification/InstrumentLookup'
+import { VerificationReviewQueue } from './components/verification/VerificationReviewQueue'
 import { StateAdminWorkspaces } from './components/admin/StateAdminWorkspaces'
 import { StateAdminOverview } from './components/admin/StateAdminOverview'
 import { StateAdminApplications } from './components/admin/StateAdminApplications'
@@ -49,14 +51,6 @@ import SubmittedReports from './components/lmo/SubmittedReports';
 import FlaggedInstruments from './components/lmo/FlaggedInstruments';
 import LmoNotifications from './components/lmo/Notifications';
 
-const roleOptions: { value: Role; description: string }[] = [
-  { value: 'State Administrator', description: 'Manage statewide operations, users, and reports' },
-  { value: 'Legal Metrology Officer', description: 'Review applications and conduct field verification' },
-  { value: 'GATC Officer', description: 'Conduct GATC centre testing & verification operations' },
-  { value: 'GATC Operator', description: 'Manage centre appointments and test reports' },
-  { value: 'Applicant / Business', description: 'Submit applications and manage instruments' },
-]
-
 const backendRoles: Record<string, Role> = {
   STATE_ADMINISTRATOR: 'State Administrator',
   LEGAL_METROLOGY_OFFICER: 'Legal Metrology Officer',
@@ -68,7 +62,6 @@ const backendRoles: Record<string, Role> = {
 function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => void }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [error, setError] = useState('')
-  const [selectedRole, setSelectedRole] = useState<Role>('Applicant / Business')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -81,7 +74,6 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
       setError('Use a password with at least 6 characters.')
       return
     }
-    const role = String(formData.get('role') || 'State Administrator') as Role
     const name = mode === 'signup' ? String(formData.get('name')).trim() : email.split('@')[0] || 'Arjun Sharma'
     if (mode === 'signup' && !name) {
       setError('Enter your full name to continue.')
@@ -92,7 +84,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
       const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/${mode === 'login' ? 'login' : 'signup'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password, role: Object.entries(backendRoles).find(([, label]) => label === role)?.[0] }),
+        body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password }),
       })
       const result = await response.json() as {
         message?: string
@@ -105,7 +97,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
-        role: backendRoles[result.user.role] || role,
+        role: backendRoles[result.user.role] || 'Applicant / Business',
         rawRole: result.user.role,
         jurisdiction: result.user.jurisdiction,
       }
@@ -151,7 +143,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
               WELCOME TO MEASURE<span>SURE</span>
             </p>
             <h2>{mode === 'login' ? 'Sign in to your workspace' : 'Create your workspace account'}</h2>
-            <p>{mode === 'login' ? 'Use your registered account to continue.' : 'Choose the role that matches your work.'}</p>
+            <p>{mode === 'login' ? 'Use your registered account to continue.' : 'Create an applicant account to register instruments and submit verifications.'}</p>
           </div>
           <div className="auth-tabs">
             <button className={mode === 'login' ? 'active' : ''} type="button" onClick={() => { setMode('login'); setError('') }}>
@@ -182,19 +174,6 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
                 <input name="password" type="password" required minLength={6} placeholder="At least 6 characters" />
               </div>
             </label>
-            {mode === 'signup' && (
-              <label>
-                Access role
-                <select name="role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as Role)}>
-                  {roleOptions.map((option) => (
-                    <option value={option.value} key={option.value}>
-                      {option.value}
-                    </option>
-                  ))}
-                </select>
-                <small className="role-hint">{roleOptions.find((option) => option.value === selectedRole)?.description}</small>
-              </label>
-            )}
             {error && (
               <p className="auth-error" role="alert">
                 {error}
@@ -577,6 +556,7 @@ function App() {
     </span>
   )
 
+  if (window.location.pathname === '/verify') return <InstrumentLookup />
   if (!currentUser) return <AuthPage onAuthenticated={setCurrentUser} />
 
   const signOut = () => {
@@ -651,6 +631,7 @@ function App() {
           {isLmo && activeSection !== 'Overview' && activeSection !== 'Signed out' && (
             <>
               {activeSection === 'My Assignments' && <MyAssignments currentUser={currentUser} onActionFeedback={showFeedback} />}
+              {activeSection === 'Verification Review' && <VerificationReviewQueue />}
               {activeSection === 'Today’s Route' && <TodaysRoute currentUser={currentUser} onActionFeedback={showFeedback} />}
               {activeSection === 'Field Inspections' && <FieldInspections currentUser={currentUser} onActionFeedback={showFeedback} />}
               {activeSection === 'Offline Cases' && <OfflineCases currentUser={currentUser} onActionFeedback={showFeedback} />}
@@ -707,14 +688,7 @@ function App() {
               )}
 
               {activeSection === 'Applications' && (
-                <StateAdminApplications
-                  applications={adminApplications}
-                  officers={adminOfficers}
-                  initialStatusFilter={appFilterStatus}
-                  onUpdateStatus={handleUpdateApplicationStatus}
-                  onAssignOfficer={handleAssignOfficer}
-                  onAddRemark={handleAddRemark}
-                />
+                <VerificationReviewQueue />
               )}
 
               {activeSection === 'Instruments' && (

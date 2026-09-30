@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   AlertCircle,
   AlertTriangle,
@@ -29,10 +29,8 @@ import {
   X,
 } from 'lucide-react'
 import type { AuthUser } from '../../types'
+import { apiRequest } from '../../lib/api'
 import {
-  initialBusinessApplications,
-  initialBusinessCertificates,
-  initialBusinessInstruments,
   initialBusinessPremises,
   initialLicensedRepairers,
   initialScheduledInspections,
@@ -40,6 +38,100 @@ import {
   type BusinessCertificate,
   type BusinessInstrument,
 } from '../../features/business/data'
+
+interface ApiInstrument {
+  id: string
+  platformId: string
+  type: string
+  manufacturer: string
+  model: string
+  serialNumber: string
+  capacity: string | null
+  accuracyClass: string | null
+  premises: string | null
+  location: string
+  status: string
+  lastVerified: string | null
+  nextDue: string | null
+  certificateNo: string | null
+  sealNo: string | null
+}
+
+interface ApiApplication {
+  id: string
+  applicationNo: string
+  type: string
+  instrumentId: string
+  instrumentName: string | null
+  location: string | null
+  submittedAt: string | null
+  status: string
+  assignedOfficer: string | null
+  scheduledDate: string | null
+  feeAmount: number
+  feePaid: boolean
+}
+
+interface ApiCertificate {
+  id: string
+  certificateNo: string
+  instrumentId: string
+  instrumentName: string
+  premises: string
+  issuedDate: string
+  expiryDate: string
+  status: string
+  issuedBy: string
+  sealNumber: string
+  qrCodeUrl: string | null
+  downloadUrl: string | null
+}
+
+function toBusinessInstrument(instrument: ApiInstrument): BusinessInstrument {
+  return {
+    id: instrument.platformId,
+    type: instrument.type,
+    manufacturer: instrument.manufacturer,
+    model: instrument.model,
+    serialNumber: instrument.serialNumber,
+    capacity: instrument.capacity || 'Not recorded',
+    location: instrument.location,
+    premises: instrument.premises || instrument.location,
+    status: instrument.status as BusinessInstrument['status'],
+    lastVerified: instrument.lastVerified || 'Not yet verified',
+    nextDue: instrument.nextDue || 'Not scheduled',
+    certificateNo: instrument.certificateNo || 'Pending Registration',
+    sealNo: instrument.sealNo || 'Unstamped',
+    accuracyClass: instrument.accuracyClass || 'Not recorded',
+  }
+}
+
+function toBusinessApplication(application: ApiApplication): BusinessApplication {
+  return {
+    id: application.id,
+    applicationNo: application.applicationNo,
+    type: application.type as BusinessApplication['type'],
+    instrumentId: application.instrumentId,
+    instrumentName: application.instrumentName || 'Instrument verification',
+    location: application.location || 'Not recorded',
+    submittedDate: application.submittedAt ? new Date(application.submittedAt).toLocaleDateString() : 'Pending',
+    status: application.status as BusinessApplication['status'],
+    assignedOfficer: application.assignedOfficer || 'Officer Allocation Pending',
+    scheduledDate: application.scheduledDate || undefined,
+    feeAmount: application.feeAmount,
+    feePaid: application.feePaid,
+  }
+}
+
+function toBusinessCertificate(certificate: ApiCertificate): BusinessCertificate {
+  const expired = new Date(`${certificate.expiryDate}T23:59:59`) < new Date()
+  return {
+    ...certificate,
+    status: expired ? 'Expired' : certificate.status as BusinessCertificate['status'],
+    qrCodeUrl: certificate.qrCodeUrl || '',
+    downloadUrl: certificate.downloadUrl || '',
+  }
+}
 
 interface BusinessDashboardProps {
   currentUser: AuthUser
@@ -49,12 +141,15 @@ interface BusinessDashboardProps {
 }
 
 export function BusinessDashboard({ currentUser, activeSection, onActionFeedback, onNavigate }: BusinessDashboardProps) {
-  const [instruments, setInstruments] = useState<BusinessInstrument[]>(initialBusinessInstruments)
-  const [applications, setApplications] = useState<BusinessApplication[]>(initialBusinessApplications)
-  const [certificates] = useState<BusinessCertificate[]>(initialBusinessCertificates)
+  const [instruments, setInstruments] = useState<BusinessInstrument[]>([])
+  const [applications, setApplications] = useState<BusinessApplication[]>([])
+  const [certificates, setCertificates] = useState<BusinessCertificate[]>([])
   const [inspections] = useState(initialScheduledInspections)
   const [premises] = useState(initialBusinessPremises)
   const [repairers] = useState(initialLicensedRepairers)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('')
@@ -67,6 +162,30 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
   const [selectedCertificate, setSelectedCertificate] = useState<BusinessCertificate | null>(null)
   const [selectedAppDetail, setSelectedAppDetail] = useState<BusinessApplication | null>(null)
 
+  const loadWorkflowData = async () => {
+    setLoadError('')
+    try {
+      const [instrumentRows, applicationRows, certificateRows] = await Promise.all([
+        apiRequest<ApiInstrument[]>('/business/instruments'),
+        apiRequest<ApiApplication[]>('/business/applications'),
+        apiRequest<ApiCertificate[]>('/business/certificates'),
+      ])
+      setInstruments(instrumentRows.map(toBusinessInstrument))
+      setApplications(applicationRows.map(toBusinessApplication))
+      setCertificates(certificateRows.map(toBusinessCertificate))
+    } catch (requestError) {
+      setLoadError(requestError instanceof Error ? requestError.message : 'Unable to load business records')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (['Overview', 'Applications', 'Instruments', 'Certificates'].includes(activeSection)) {
+      void loadWorkflowData()
+    }
+  }, [activeSection])
+
   // Quick stats calculations
   const totalInstruments = instruments.length
   const activeInstruments = instruments.filter((i) => i.status === 'Active').length
@@ -76,6 +195,8 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
 
   return (
     <div className="business-dashboard-container">
+      {loadError && <p className="verify-review-error" role="alert">{loadError}</p>}
+      {isLoading && <p className="verify-review-empty" role="status">Loading instruments, applications, and certificates...</p>}
       {/* Top Header Banner for Business Account */}
       <section className="business-welcome-banner">
         <div className="welcome-main">
@@ -473,6 +594,9 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
               <h2>Verification Certificates & Official Seals</h2>
               <p>Download legal metrology verification certificates, stamping seals, and QR-verifiable proof of accuracy.</p>
             </div>
+            <button className="btn-secondary-light" type="button" onClick={() => window.open('/verify', '_blank', 'noopener,noreferrer')}>
+              <Search size={16} /> Verify by serial number
+            </button>
           </div>
 
           <div className="certificates-grid">
@@ -813,36 +937,42 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
       {/* MODAL 1: NEW VERIFICATION APPLICATION */}
       {showNewAppModal && (
         <div className="modal-backdrop" role="presentation">
-          <div className="modal-content-box">
+          <div className="modal-content-box application-modal" role="dialog" aria-modal="true" aria-labelledby="application-modal-title">
             <div className="modal-header">
               <div>
                 <span className="panel-eyebrow">NEW VERIFICATION REQUEST</span>
-                <h2>Apply for Instrument Stamping</h2>
+                <h2 id="application-modal-title">Apply for Instrument Stamping</h2>
               </div>
               <button type="button" className="btn-close" onClick={() => setShowNewAppModal(false)}>
                 <X size={18} />
               </button>
             </div>
             <form
-              onSubmit={(e) => {
+              className="application-form"
+              onSubmit={async (e) => {
                 e.preventDefault()
                 const form = new FormData(e.currentTarget)
-                const newApp: BusinessApplication = {
-                  id: `LM-2024-0${Math.floor(8422 + Math.random() * 500)}`,
-                  applicationNo: `LM-2024-0${Math.floor(8422 + Math.random() * 500)}`,
-                  type: form.get('type') as any,
-                  instrumentId: form.get('instrumentId') as string,
-                  instrumentName: form.get('instrumentName') as string,
-                  location: form.get('location') as string,
-                  submittedDate: 'Just now',
-                  status: 'Under review',
-                  assignedOfficer: 'Officer Allocation Pending',
-                  feeAmount: Number(form.get('feeAmount')) || 1500,
-                  feePaid: true,
+                setIsSaving(true)
+                try {
+                  const created = await apiRequest<ApiApplication>('/business/applications', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      type: form.get('type'),
+                      instrumentId: form.get('instrumentId'),
+                      instrumentName: form.get('instrumentName'),
+                      location: form.get('location'),
+                      feeAmount: Number(form.get('feeAmount')) || 1500,
+                    }),
+                  })
+                  const newApp = toBusinessApplication(created)
+                  setApplications((current) => [newApp, ...current])
+                  setShowNewAppModal(false)
+                  onActionFeedback(`Application ${newApp.applicationNo} submitted successfully!`)
+                } catch (requestError) {
+                  onActionFeedback(requestError instanceof Error ? requestError.message : 'Application submission failed')
+                } finally {
+                  setIsSaving(false)
                 }
-                setApplications([newApp, ...applications])
-                setShowNewAppModal(false)
-                onActionFeedback(`Application ${newApp.applicationNo} submitted successfully!`)
               }}
             >
               <label>
@@ -876,17 +1006,17 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
                 <input name="location" required placeholder="e.g. Okhla Logistics Depot, Gate 2" defaultValue="Okhla Logistics Centre Phase II" />
               </label>
 
-              <label>
+              <label className="application-form-wide">
                 Estimated Stamping Fee (₹)
                 <input name="feeAmount" type="number" required defaultValue={2400} />
               </label>
 
-              <div className="modal-footer-actions">
+              <div className="modal-footer-actions application-form-wide">
                 <button type="button" className="btn-secondary-light" onClick={() => setShowNewAppModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary-glow">
-                  Submit & Pay Verification Fee
+                <button type="submit" className="btn-primary-glow" disabled={isSaving || instruments.length === 0}>
+                  {isSaving ? 'Submitting...' : 'Submit & Pay Verification Fee'}
                 </button>
               </div>
             </form>
@@ -908,28 +1038,33 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
               </button>
             </div>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault()
                 const form = new FormData(e.currentTarget)
-                const newInst: BusinessInstrument = {
-                  id: `WM-DEL-0${Math.floor(1985 + Math.random() * 100)}`,
-                  type: form.get('type') as string,
-                  manufacturer: form.get('manufacturer') as string,
-                  model: form.get('model') as string,
-                  serialNumber: form.get('serialNumber') as string,
-                  capacity: form.get('capacity') as string,
-                  location: form.get('location') as string,
-                  premises: form.get('premises') as string,
-                  status: 'Pending Verification',
-                  lastVerified: 'Not yet verified',
-                  nextDue: 'Immediate verification required',
-                  certificateNo: 'Pending Registration',
-                  sealNo: 'Unstamped',
-                  accuracyClass: form.get('accuracyClass') as string || 'Class III',
+                setIsSaving(true)
+                try {
+                  const created = await apiRequest<ApiInstrument>('/business/instruments', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      type: form.get('type'),
+                      manufacturer: form.get('manufacturer'),
+                      model: form.get('model'),
+                      serialNumber: form.get('serialNumber'),
+                      capacity: form.get('capacity'),
+                      accuracyClass: form.get('accuracyClass'),
+                      premises: form.get('premises'),
+                      location: form.get('location'),
+                    }),
+                  })
+                  const newInstrument = toBusinessInstrument(created)
+                  setInstruments((current) => [newInstrument, ...current])
+                  setShowRegisterInstModal(false)
+                  onActionFeedback(`Instrument ${newInstrument.id} registered into business fleet!`)
+                } catch (requestError) {
+                  onActionFeedback(requestError instanceof Error ? requestError.message : 'Instrument registration failed')
+                } finally {
+                  setIsSaving(false)
                 }
-                setInstruments([newInst, ...instruments])
-                setShowRegisterInstModal(false)
-                onActionFeedback(`Instrument ${newInst.id} registered into business fleet!`)
               }}
             >
               <label>
@@ -984,8 +1119,8 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
                 <button type="button" className="btn-secondary-light" onClick={() => setShowRegisterInstModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary-glow">
-                  Save Instrument Record
+                <button type="submit" className="btn-primary-glow" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save Instrument Record'}
                 </button>
               </div>
             </form>
@@ -1049,10 +1184,14 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
               </div>
 
               <div className="cert-qr-footer">
-                <img src={selectedCertificate.qrCodeUrl} alt="Verification QR Code" width={100} height={100} />
+                {selectedCertificate.qrCodeUrl ? (
+                  <a href={`/verify?certificate=${encodeURIComponent(selectedCertificate.certificateNo)}`} target="_blank" rel="noreferrer" aria-label="Open public certificate verification">
+                    <img src={selectedCertificate.qrCodeUrl} alt="QR code linking to public certificate verification" width={100} height={100} />
+                  </a>
+                ) : <div className="verify-review-empty">QR unavailable</div>}
                 <div>
                   <strong>Official Digital Verification QR</strong>
-                  <p>Scan with Legal Metrology Inspection App to verify certificate authenticity on site.</p>
+                  <p>Scan to open the public certificate check, or search by the instrument serial number.</p>
                 </div>
               </div>
             </div>

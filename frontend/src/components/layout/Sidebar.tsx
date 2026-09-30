@@ -44,6 +44,7 @@ const defaultNavigation = [
 const lmoNavigation = [
   { label: 'Overview', icon: LayoutDashboard },
   { label: 'My Assignments', icon: ClipboardCheck },
+  { label: 'Verification Review', icon: FileCheck2 },
   { label: 'Today’s Route', icon: MapPin },
   { label: 'Field Inspections', icon: ShieldCheck },
   { label: 'Offline Cases', icon: CloudOff },

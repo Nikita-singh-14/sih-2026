@@ -76,6 +76,7 @@ model Instrument {
 
   @@index([ownerId])
   @@index([status])
+  @@unique([manufacturer, serialNumber])
 }
 
 model Application {

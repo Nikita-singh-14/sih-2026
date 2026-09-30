@@ -5,16 +5,18 @@
   "scripts": {
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:clean": "node -e \"const fs=require('fs'); const path=require('path'); const dir=path.join(process.cwd(),'node_modules','.prisma'); if (fs.existsSync(dir)) fs.rmSync(dir,{ recursive: true, force: true });\"",
-    "prisma:generate": "npm run prisma:clean && prisma generate",
+    "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
     "prestart": "npm run build",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "start:dev": "tsx watch src/server.ts",
-    "lint": "eslint \"src/server.ts\""
+    "lint": "eslint \"src/server.ts\"",
+    "test:e2e": "node tests/verification.e2e.mjs",
+    "test:e2e:security": "node tests/signup-security.e2e.mjs",
+    "test:e2e:persistence": "node tests/persistence.e2e.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
@@ -22,13 +24,15 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.15.0",
+    "@types/qrcode": "^1.5.6",
     "eslint": "^9.24.0",
     "prisma": "^6.16.0",
     "tsx": "^4.20.5",

@@ -46,8 +46,8 @@ export const authController = {
       })
     }
 
-    if (role && !Object.values(UserRole).includes(role)) {
-      return response.status(400).json({ message: 'Invalid role' })
+    if (role && role !== UserRole.APPLICANT_BUSINESS) {
+      return response.status(403).json({ message: 'Privileged accounts must be provisioned by an administrator' })
     }
 
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } })
@@ -55,7 +55,7 @@ export const authController = {
       return response.status(409).json({ message: 'An account with this email already exists' })
     }
 
-    const userRole = role || UserRole.APPLICANT_BUSINESS
+    const userRole = UserRole.APPLICANT_BUSINESS
     let organisationId: string | null = null
 
     if (userRole === UserRole.APPLICANT_BUSINESS) {
