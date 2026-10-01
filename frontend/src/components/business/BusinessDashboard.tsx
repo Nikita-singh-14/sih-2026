@@ -1056,9 +1056,9 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
                       location: form.get('location'),
                     }),
                   })
+                  setShowRegisterInstModal(false)
                   const newInstrument = toBusinessInstrument(created)
                   setInstruments((current) => [newInstrument, ...current])
-                  setShowRegisterInstModal(false)
                   onActionFeedback(`Instrument ${newInstrument.id} registered into business fleet!`)
                 } catch (requestError) {
                   onActionFeedback(requestError instanceof Error ? requestError.message : 'Instrument registration failed')
