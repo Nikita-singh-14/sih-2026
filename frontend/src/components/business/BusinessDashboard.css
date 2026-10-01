@@ -1010,6 +1010,74 @@
   overflow-y: auto;
 }
 
+.instrument-registration-modal {
+  max-width: 640px;
+  padding: 1.75rem;
+}
+
+.instrument-registration-modal .modal-header h2 {
+  margin: 0.35rem 0 0;
+  color: #0f172a;
+  font-size: 1.35rem;
+  line-height: 1.3;
+}
+
+.instrument-registration-form {
+  display: grid;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.instrument-registration-form > label,
+.instrument-registration-form .form-row-dual > label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.4rem;
+  min-width: 0;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.instrument-registration-form .form-row-dual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.instrument-registration-form input,
+.instrument-registration-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  color: #162c33;
+  background: #fff;
+  border: 1px solid #cbd5d1;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.instrument-registration-form input:focus,
+.instrument-registration-form select:focus {
+  outline: 3px solid #0c8d8326;
+  border-color: #0c8d83;
+}
+
+.instrument-registration-form .modal-footer-actions {
+  gap: 0.75rem;
+  margin-top: 0.15rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e7ece9;
+}
+
+@media (max-width: 600px) {
+  .instrument-registration-modal { padding: 1.15rem; }
+  .instrument-registration-form .form-row-dual { grid-template-columns: minmax(0, 1fr); }
+  .instrument-registration-form .modal-footer-actions { flex-wrap: wrap-reverse; }
+  .instrument-registration-form .modal-footer-actions button { flex: 1 1 140px; }
+}
+
 .application-modal {
   max-width: 660px;
   padding: 1.5rem 1.75rem;

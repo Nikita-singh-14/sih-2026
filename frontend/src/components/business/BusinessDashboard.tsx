@@ -1027,7 +1027,7 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
       {/* MODAL 2: REGISTER NEW INSTRUMENT */}
       {showRegisterInstModal && (
         <div className="modal-backdrop" role="presentation">
-          <div className="modal-content-box">
+          <div className="modal-content-box instrument-registration-modal">
             <div className="modal-header">
               <div>
                 <span className="panel-eyebrow">EQUIPMENT REGISTRATION</span>
@@ -1038,6 +1038,7 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
               </button>
             </div>
             <form
+              className="instrument-registration-form"
               onSubmit={async (e) => {
                 e.preventDefault()
                 const form = new FormData(e.currentTarget)
