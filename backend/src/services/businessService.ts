@@ -186,6 +186,7 @@ export class BusinessService {
     })
 
     if (existing) {
+      if (existing.ownerId === orgId) return existing
       throw new Error(`An instrument with serial number "${data.serialNumber}" by ${data.manufacturer} is already registered.`)
     }
 
