@@ -21,6 +21,7 @@ import { CertificateComplaints } from './components/admin/CertificateComplaints'
 import './components/business/BusinessDashboard.css'
 import './components/admin/StateAdmin.css'
 import { StatusBadge } from './components/ui/StatusBadge'
+import { apiUrl } from './lib/api'
 import { applications, dashboardStats, instruments, notifications, upcomingVisits } from './features/dashboard/data'
 import {
   initialAdminApplications,
@@ -82,7 +83,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
     }
     setIsSubmitting(true)
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/${mode === 'login' ? 'login' : 'signup'}`, {
+      const response = await fetch(apiUrl(`/auth/${mode === 'login' ? 'login' : 'signup'}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password }),
