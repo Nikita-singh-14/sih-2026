@@ -1,0 +1,239 @@
+@media (max-width: 1060px) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  }
+
+  .auth-brand-panel {
+    padding-inline: clamp(24px, 4vw, 56px);
+  }
+
+  .auth-form-panel {
+    padding: 32px clamp(22px, 4vw, 40px);
+  }
+
+  .page-content {
+    padding-inline: clamp(20px, 4vw, 42px);
+  }
+
+  .content-grid,
+  .lmo-content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+
+  .auth-brand-panel {
+    min-height: 220px;
+    padding: 24px 22px;
+  }
+
+  .auth-intro {
+    margin: 30px 0 20px;
+  }
+
+  .auth-intro h1 {
+    max-width: 560px;
+    font-size: clamp(28px, 7vw, 38px);
+  }
+
+  .auth-intro p:not(.eyebrow) {
+    margin-top: 12px;
+  }
+
+  .auth-note {
+    display: none;
+  }
+
+  .auth-form-panel {
+    padding: 30px 22px 40px;
+  }
+
+  .app-shell,
+  .main-content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sidebar {
+    width: min(300px, 86vw);
+    max-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .topbar {
+    justify-content: flex-start;
+    padding-inline: 14px;
+  }
+
+  .breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-actions {
+    flex: 0 0 auto;
+  }
+
+  .page-content {
+    padding: 24px 16px 36px;
+  }
+
+  .page-heading,
+  .section-hero-bar,
+  .business-welcome-banner {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .page-heading h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .content-grid,
+  .lmo-content-grid,
+  .workspace-grid-2col,
+  .modal-columns,
+  .details-grid-2,
+  .form-row-dual,
+  .instrument-registration-form .form-row-dual,
+  .application-form,
+  .analytics-summary-box {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stats-grid,
+  .application-metrics,
+  .lmo-kpi-grid,
+  .kpi-cards-grid-7,
+  .kpi-cards-grid-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table-wrap,
+  .lmo-table-wrap,
+  .b-table-wrap,
+  .cert-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap > table,
+  .admin-table,
+  .lmo-table {
+    min-width: 640px;
+  }
+
+  .panel-header,
+  .workspace-header {
+    gap: 12px;
+    padding-inline: 16px;
+  }
+
+  .table-toolbar,
+  .filter-toolbar-grid,
+  .lmo-filter-toolbar,
+  .lmo-filter-selects,
+  .banner-actions {
+    flex-wrap: wrap;
+  }
+
+  .filter-select,
+  .filter-select-wrap,
+  .filter-select-item {
+    max-width: 100%;
+  }
+
+  .inspection-workspace-backdrop,
+  .gatc-fixed-modal-backdrop {
+    padding: 8px !important;
+  }
+
+  .inspection-workspace-modal,
+  .gatc-fixed-workspace-modal {
+    width: 100% !important;
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 8px !important;
+  }
+
+  .workspace-body,
+  .gatc-fixed-modal-body {
+    padding: 16px !important;
+  }
+
+  .workspace-tabs,
+  .gatc-equal-workspace-tabs {
+    padding-inline: 8px;
+  }
+
+  .workspace-tabs button,
+  .gatc-equal-tab-btn {
+    flex: 0 0 auto !important;
+    min-height: 44px;
+    padding-inline: 12px !important;
+  }
+
+  .modal-content-box,
+  .instrument-registration-modal,
+  .application-modal {
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .page-content {
+    padding-inline: 12px;
+  }
+
+  .topbar {
+    padding-inline: 10px;
+  }
+
+  .breadcrumb-divider {
+    padding-inline: 6px;
+  }
+
+  .stats-grid,
+  .application-metrics,
+  .lmo-kpi-grid,
+  .kpi-cards-grid-7,
+  .kpi-cards-grid-6 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stat-card,
+  .metric-card,
+  .kpi-card-interactive {
+    min-width: 0;
+  }
+
+  .auth-form-panel {
+    padding-inline: 16px;
+  }
+
+  .auth-tabs {
+    gap: 16px;
+  }
+
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .nested-footer,
+  .modal-footer-actions,
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+}

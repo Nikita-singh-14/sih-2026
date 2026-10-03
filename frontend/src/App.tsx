@@ -52,6 +52,7 @@ import OfflineCases from './components/lmo/OfflineCases';
 import SubmittedReports from './components/lmo/SubmittedReports';
 import FlaggedInstruments from './components/lmo/FlaggedInstruments';
 import LmoNotifications from './components/lmo/Notifications';
+import './responsive.css'
 
 const backendRoles: Record<string, Role> = {
   STATE_ADMINISTRATOR: 'State Administrator',
@@ -181,7 +182,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => vo
                 {error}
               </p>
             )}
-            <button className="primary-button auth-submit" disabled={isSubmitting} type="submit">
+            <button className="primary-button auth-submit min-h-11" disabled={isSubmitting} type="submit">
               {isSubmitting ? 'Connecting...' : mode === 'login' ? 'Sign in' : 'Create account'} <span>→</span>
             </button>
           </form>
@@ -579,7 +580,7 @@ function App() {
       />
       <main className="main-content">
         <header className="topbar">
-          <button className="icon-button menu-button" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}>
+          <button className="icon-button menu-button min-h-11 min-w-11" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}>
             <Menu size={20} />
           </button>
           <div className="breadcrumb">
