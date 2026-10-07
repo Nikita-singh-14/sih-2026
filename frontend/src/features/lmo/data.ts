@@ -256,16 +256,13 @@ export function getMockWorkspaceData(assignment: LmoAssignment): InspectionWorks
       { id: 'r5', loadAppliedKg: 50.0, instrumentReadingKg: 50.008, errorKg: 0.008, maxPermissibleErrorKg: 0.015, passed: true },
     ],
     gpsCapture: {
-      lat: 28.5355,
-      lng: 77.2612,
-      accuracyMeters: 3.2,
-      timestamp: new Date().toLocaleString(),
+      lat: 0,
+      lng: 0,
+      accuracyMeters: 0,
+      timestamp: '',
     },
-    photos: {
-      serialPlateUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80',
-      sealIntactUrl: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=300&auto=format&fit=crop&q=80',
-      fullSetupUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=300&auto=format&fit=crop&q=80',
-    },
+    visitSelfie: null,
+    photos: {},
     supportingDocs: [
       { name: 'Previous_Verification_Certificate.pdf', type: 'PDF', url: '#' },
       { name: 'Purchase_Invoice_&_Model_Approval.pdf', type: 'PDF', url: '#' },

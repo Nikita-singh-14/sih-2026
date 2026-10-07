@@ -23,6 +23,7 @@ model User {
   organisationId String?
   organisation   Organisation? @relation(fields: [organisationId], references: [id])
   notifications  Notification[]
+  inspectionReports InspectionReport[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -97,12 +98,34 @@ model Application {
   remarks         String?
   submittedAt     DateTime?          @default(now())
   events          ApplicationEvent[]
+  inspectionReport InspectionReport?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
   @@index([status, createdAt])
   @@index([instrumentId])
   @@index([applicantId])
+}
+
+model InspectionReport {
+  id                  String      @id @default(uuid())
+  applicationId       String      @unique
+  application         Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  officerId           String
+  officer             User        @relation(fields: [officerId], references: [id], onDelete: Restrict)
+  decision            String
+  officerObservations String      @default("")
+  latitude            Float
+  longitude           Float
+  accuracyMeters      Float
+  locationCapturedAt  DateTime
+  selfieImage         Bytes       @db.ByteA
+  selfieCapturedAt    DateTime
+  evidence            Json
+  submittedAt         DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([officerId, submittedAt])
 }
 
 model ApplicationEvent {

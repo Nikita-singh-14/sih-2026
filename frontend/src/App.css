@@ -272,6 +272,17 @@
 .gps-info-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px; background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; }
 .gps-info-strip > div span { display: block; color: #0f766e; font-size: 10px; font-weight: 600; }
 .gps-info-strip > div strong { display: block; margin-top: 3px; color: #134e4a; font-size: 12px; font-weight: 700; }
+.visit-capture-error, .workspace-evidence-error { margin: 10px 0 0; padding: 10px 12px; border: 1px solid #fecaca; border-radius: 6px; background: #fef2f2; color: #991b1b; font-size: 12px; }
+.workspace-evidence-error { margin: 0 24px; }
+.visit-evidence-card { display: grid; gap: 10px; }
+.required-evidence-label { margin-left: 6px; padding: 2px 6px; border-radius: 10px; background: #fff7ed; color: #9a3412; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.visit-evidence-help { margin: -4px 0 0; color: #64748b; font-size: 11px; }
+.visit-selfie-preview { display: flex; align-items: center; gap: 12px; color: #64748b; font-size: 11px; }
+.visit-selfie-preview img { width: 120px; height: 120px; border: 1px solid #cbd5e1; border-radius: 8px; object-fit: cover; }
+.visit-selfie-actions, .visit-camera-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.visit-camera-panel { display: grid; justify-items: start; gap: 10px; }
+.visit-camera-panel video { width: min(100%, 360px); max-height: 320px; border-radius: 8px; background: #0f172a; object-fit: cover; }
+.visit-selfie-file-input { display: none; }
 
 /* Photos & Docs */
 .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -625,7 +636,6 @@
 @media (max-width: 760px) {
   .reports-kpi-grid { grid-template-columns: 1fr; }
 }
-
 
 
 

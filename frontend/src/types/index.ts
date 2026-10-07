@@ -179,6 +179,10 @@ export interface InspectionWorkspaceData {
     accuracyMeters: number
     timestamp: string
   }
+  visitSelfie: {
+    imageData: string
+    capturedAt: string
+  } | null
   photos: {
     serialPlateUrl?: string
     sealIntactUrl?: string

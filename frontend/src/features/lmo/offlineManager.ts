@@ -106,10 +106,14 @@ export class OfflineManager {
           },
           body: JSON.stringify({
             applicationId: item.applicationId,
-            decision: item.data.decision || 'PASSED',
+            decision: item.data.decision || 'FLAGGED',
             officerObservations: item.data.officerObservations,
             gpsCapture: item.data.gpsCapture,
+            visitSelfie: item.data.visitSelfie,
             photos: item.data.photos,
+            testChecklist: item.data.testChecklist,
+            readings: item.data.readings,
+            officerSignature: item.data.officerSignature,
           }),
         })
 

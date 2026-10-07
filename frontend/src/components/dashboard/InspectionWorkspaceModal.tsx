@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  Camera,
   CheckCircle2,
   ChevronRight,
   FileCheck,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react'
 import type { InspectionWorkspaceData, LmoAssignment } from '../../types'
 import { getMockWorkspaceData } from '../../features/lmo/data'
+import { apiRequest } from '../../lib/api'
 
 interface InspectionWorkspaceModalProps {
   assignment: LmoAssignment
@@ -40,10 +42,27 @@ export function InspectionWorkspaceModal({
   const [isSavingOffline, setIsSavingOffline] = useState(false)
   const [gpsRefreshing, setGpsRefreshing] = useState(false)
   const [officerSigType, setOfficerSigType] = useState<'typed' | 'drawn'>('drawn')
+  const [gpsError, setGpsError] = useState('')
+  const [selfieError, setSelfieError] = useState('')
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
 
   // Signature canvas ref
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
+  const selfieInputRef = useRef<HTMLInputElement | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
+
+  useEffect(() => {
+    if (videoRef.current && cameraStreamRef.current) {
+      videoRef.current.srcObject = cameraStreamRef.current
+    }
+  }, [isCameraOpen])
+
+  useEffect(() => () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+  }, [])
 
   // Initialize canvas drawing
   useEffect(() => {
@@ -120,25 +139,147 @@ export function InspectionWorkspaceModal({
     }))
   }
 
-  // Handle Refresh GPS
   const handleRefreshGps = () => {
+    setGpsError('')
+    if (!navigator.geolocation) {
+      setGpsError('This browser does not support location capture. Use a supported browser and try again.')
+      return
+    }
+
     setGpsRefreshing(true)
-    setTimeout(() => {
-      setData((prev) => ({
-        ...prev,
-        gpsCapture: {
-          lat: 28.5356,
-          lng: 77.2614,
-          accuracyMeters: 2.5,
-          timestamp: new Date().toLocaleString(),
-        },
-      }))
-      setGpsRefreshing(false)
-    }, 800)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const timestamp = new Date(position.timestamp).toISOString()
+        setData((prev) => ({
+          ...prev,
+          gpsCapture: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracyMeters: position.coords.accuracy,
+            timestamp,
+          },
+          installationAddress: {
+            ...prev.installationAddress,
+            gpsCoordinates: `${position.coords.latitude.toFixed(6)}°, ${position.coords.longitude.toFixed(6)}°`,
+          },
+        }))
+        setGpsRefreshing(false)
+      },
+      (error) => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? 'Location access was denied. Enable location permission in your browser settings and retry.'
+          : error.code === error.POSITION_UNAVAILABLE
+            ? 'Your device could not determine a location. Check location services and retry.'
+            : 'Location capture timed out. Move to an area with a clear GPS signal and retry.'
+        setGpsError(message)
+        setGpsRefreshing(false)
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+    )
   }
 
-  // Save Offline Action
+  const stopCamera = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+    cameraStreamRef.current = null
+    setIsCameraOpen(false)
+  }
+
+  const handleOpenCamera = async () => {
+    setSelfieError('')
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setSelfieError('Live camera capture is unavailable in this browser. Use the device camera or upload a selfie instead.')
+      selfieInputRef.current?.click()
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: 'user' },
+      })
+      cameraStreamRef.current = stream
+      setIsCameraOpen(true)
+    } catch (error) {
+      const cameraError = error as DOMException
+      setSelfieError(cameraError.name === 'NotAllowedError'
+        ? 'Camera access was denied. Allow camera access in your browser settings, or use the device camera/upload option.'
+        : 'Could not start the camera. Check that a camera is connected and try again.')
+      selfieInputRef.current?.click()
+    }
+  }
+
+  const saveSelfie = (imageData: string) => {
+    setData((prev) => ({
+      ...prev,
+      visitSelfie: { imageData, capturedAt: new Date().toISOString() },
+    }))
+    setSelfieError('')
+  }
+
+  const handleCaptureSelfie = () => {
+    const video = videoRef.current
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+      setSelfieError('The camera is still starting. Wait a moment and try again.')
+      return
+    }
+    const canvas = document.createElement('canvas')
+    const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight))
+    canvas.width = Math.round(video.videoWidth * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
+    const context = canvas.getContext('2d')
+    if (!context) {
+      setSelfieError('Could not process the selfie on this device. Use the device camera/upload option.')
+      return
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    saveSelfie(canvas.toDataURL('image/jpeg', 0.72))
+    stopCamera()
+  }
+
+  const handleSelfieFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) {
+      setSelfieError('Choose an image smaller than 10 MB.')
+      return
+    }
+    try {
+      const bitmap = await createImageBitmap(file)
+      const canvas = document.createElement('canvas')
+      const scale = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height))
+      canvas.width = Math.round(bitmap.width * scale)
+      canvas.height = Math.round(bitmap.height * scale)
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Image processing is unavailable on this device.')
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      bitmap.close()
+      saveSelfie(canvas.toDataURL('image/jpeg', 0.72))
+    } catch (error) {
+      setSelfieError(error instanceof Error ? error.message : 'Could not process the selected image.')
+    }
+  }
+
+  const evidenceReady = Boolean(
+    data.gpsCapture.timestamp &&
+    Number.isFinite(data.gpsCapture.lat) &&
+    data.gpsCapture.lat >= -90 &&
+    data.gpsCapture.lat <= 90 &&
+    Number.isFinite(data.gpsCapture.lng) &&
+    data.gpsCapture.lng >= -180 &&
+    data.gpsCapture.lng <= 180 &&
+    data.gpsCapture.accuracyMeters > 0 &&
+    data.visitSelfie?.imageData &&
+    data.visitSelfie.capturedAt,
+  )
+
   const handleSaveOffline = () => {
+    if (!evidenceReady) {
+      setSubmissionError('Capture a live GPS location and officer selfie before saving this inspection for submission.')
+      setActiveTab('testing')
+      return
+    }
+    setSubmissionError('')
     setIsSavingOffline(true)
     setTimeout(() => {
       setIsSavingOffline(false)
@@ -146,13 +287,35 @@ export function InspectionWorkspaceModal({
     }, 600)
   }
 
-  // Submit Action
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!evidenceReady) {
+      setSubmissionError('Capture a live GPS location and officer selfie before submitting this inspection.')
+      setActiveTab(!data.gpsCapture.timestamp ? 'testing' : 'media')
+      return
+    }
+    setSubmissionError('')
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      await apiRequest('/lmo/inspections/submit', {
+        method: 'POST',
+        body: JSON.stringify({
+          applicationId: data.applicationDetails.applicationNo,
+          decision: data.decision || 'FLAGGED',
+          officerObservations: data.officerObservations,
+          gpsCapture: data.gpsCapture,
+          visitSelfie: data.visitSelfie,
+          photos: data.photos,
+          testChecklist: data.testChecklist,
+          readings: data.readings,
+          officerSignature: data.officerSignature,
+        }),
+      })
       onSubmitInspection(data)
-    }, 1000)
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Unable to submit the inspection report.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Calculate overall tolerance status
@@ -518,18 +681,21 @@ export function InspectionWorkspaceModal({
                   <div>
                     <span>Latitude & Longitude</span>
                     <strong>
-                      {data.gpsCapture.lat}° N, {data.gpsCapture.lng}° E
+                      {data.gpsCapture.timestamp
+                        ? `${data.gpsCapture.lat.toFixed(6)}, ${data.gpsCapture.lng.toFixed(6)}`
+                        : 'Not captured'}
                     </strong>
                   </div>
                   <div>
                     <span>GPS Accuracy</span>
-                    <strong>±{data.gpsCapture.accuracyMeters} meters (High Precision)</strong>
+                    <strong>{data.gpsCapture.timestamp ? `±${Math.round(data.gpsCapture.accuracyMeters)} meters` : 'Required'}</strong>
                   </div>
                   <div>
                     <span>Capture Timestamp</span>
-                    <strong>{data.gpsCapture.timestamp}</strong>
+                    <strong>{data.gpsCapture.timestamp ? new Date(data.gpsCapture.timestamp).toLocaleString() : 'Not captured'}</strong>
                   </div>
                 </div>
+                {gpsError && <p className="visit-capture-error" role="alert">{gpsError}</p>}
               </div>
             </div>
           )}
@@ -537,6 +703,53 @@ export function InspectionWorkspaceModal({
           {/* TAB 3: PHOTOS & EVIDENCE (Sections 10-12) */}
           {activeTab === 'media' && (
             <div className="workspace-tab-content">
+              <div className="workspace-card full-width visit-evidence-card">
+                <div className="card-heading justify-between">
+                  <div className="heading-left">
+                    <Camera size={16} />
+                    <h3>Officer Visit Selfie <span className="required-evidence-label">Required</span></h3>
+                  </div>
+                  {data.visitSelfie && <CheckCircle2 size={18} color="#15803d" aria-label="Selfie captured" />}
+                </div>
+                <p className="visit-evidence-help">Capture a live photo at the inspection premises. The image is resized on this device before it is saved.</p>
+                {data.visitSelfie && !isCameraOpen && (
+                  <div className="visit-selfie-preview">
+                    <img src={data.visitSelfie.imageData} alt="Captured officer selfie" />
+                    <span>Captured {new Date(data.visitSelfie.capturedAt).toLocaleString()}</span>
+                  </div>
+                )}
+                {isCameraOpen ? (
+                  <div className="visit-camera-panel">
+                    <video ref={videoRef} autoPlay muted playsInline aria-label="Live front camera preview" />
+                    <div className="visit-camera-actions">
+                      <button type="button" className="upload-btn" onClick={handleCaptureSelfie}>
+                        <Camera size={14} /> Take selfie
+                      </button>
+                      <button type="button" className="upload-btn" onClick={stopCamera}>Cancel camera</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="visit-selfie-actions">
+                    <button type="button" className="upload-btn" onClick={() => void handleOpenCamera()}>
+                      <Camera size={14} /> {data.visitSelfie ? 'Retake selfie' : 'Open front camera'}
+                    </button>
+                    <button type="button" className="upload-btn" onClick={() => selfieInputRef.current?.click()}>
+                      <Upload size={14} /> Use device camera / upload
+                    </button>
+                    <input
+                      ref={selfieInputRef}
+                      className="visit-selfie-file-input"
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      aria-label="Capture or upload an officer selfie"
+                      onChange={(event) => void handleSelfieFile(event)}
+                    />
+                  </div>
+                )}
+                {selfieError && <p className="visit-capture-error" role="alert">{selfieError}</p>}
+              </div>
+
               {/* 10. Instrument & Seal Photographs */}
               <div className="workspace-card full-width">
                 <div className="card-heading">
@@ -752,6 +965,7 @@ export function InspectionWorkspaceModal({
         </div>
 
         {/* 15. Workspace Actions Footer (Save Offline & Submit) */}
+        {submissionError && <p className="workspace-evidence-error" role="alert">{submissionError}</p>}
         <div className="workspace-footer">
           <div className="footer-status-indicator">
             <span className="status-dot-active" />
@@ -773,7 +987,7 @@ export function InspectionWorkspaceModal({
               type="button"
               className="workspace-btn submit-inspection-btn"
               disabled={isSubmitting || isSavingOffline}
-              onClick={handleSubmit}
+              onClick={() => void handleSubmit()}
             >
               <Send size={16} />
               {isSubmitting ? 'Submitting Report...' : 'Submit Verification Report'}
