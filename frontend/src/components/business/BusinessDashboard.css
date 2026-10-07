@@ -1079,7 +1079,7 @@
 }
 
 .application-modal {
-  max-width: 660px;
+  max-width: 700px;
   padding: 1.5rem 1.75rem;
 }
 
@@ -1092,9 +1092,86 @@
 
 .application-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+.application-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 1rem 0 0.35rem;
+  border-top: 1px solid #e7ece9;
+}
+
+.application-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #82918a;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.application-step-number {
+  display: grid;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid #cbd5d1;
+  border-radius: 50%;
+  background: #fff;
+  color: #718078;
+  font-size: 0.75rem;
+}
+
+.application-step-indicator.is-current {
+  color: #087b72;
+}
+
+.application-step-indicator.is-current .application-step-number,
+.application-step-indicator.is-complete .application-step-number {
+  border-color: #0c8d83;
+  background: #0c8d83;
+  color: #fff;
+}
+
+.application-step-indicator.is-complete {
+  color: #176b5d;
+}
+
+.application-step-count {
+  margin: -0.6rem 0 0;
+  color: #718078;
+  font-size: 0.75rem;
+}
+
+.application-step-content {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem 1.1rem;
-  width: 100%;
+  min-height: 190px;
+  align-content: start;
+}
+
+.application-step-intro,
+.application-form-notice,
+.application-payment-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #65756e;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.application-form-notice {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #f1d3a0;
+  border-radius: 6px;
+  background: #fff9eb;
+  color: #795b23;
 }
 
 .application-form label {
@@ -1135,6 +1212,43 @@
   max-width: 220px;
 }
 
+.application-review-card {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #e0e8e4;
+  border-radius: 8px;
+}
+
+.application-review-card > div {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid #e8eeeb;
+}
+
+.application-review-card > div:nth-child(odd) {
+  border-right: 1px solid #e8eeeb;
+}
+
+.application-review-card > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.application-review-card span {
+  color: #718078;
+  font-size: 0.72rem;
+}
+
+.application-review-card strong {
+  overflow-wrap: anywhere;
+  color: #213a32;
+  font-size: 0.82rem;
+}
+
 .application-form .modal-footer-actions {
   display: flex;
   justify-content: flex-end;
@@ -1147,10 +1261,17 @@
 
 @media (max-width: 600px) {
   .application-modal { padding: 1.15rem; }
-  .application-form { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; }
+  .application-form { gap: 0.85rem; }
+  .application-stepper { gap: 0.35rem; }
+  .application-step-indicator { flex-direction: column; align-items: flex-start; gap: 0.35rem; font-size: 0.68rem; }
+  .application-step-content { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; }
   .application-form .application-form-wide { grid-column: auto; }
   .application-form label.application-form-wide input { max-width: none; }
   .application-form .modal-footer-actions { flex-wrap: wrap-reverse; }
+  .application-review-card { grid-template-columns: minmax(0, 1fr); }
+  .application-review-card > div,
+  .application-review-card > div:nth-child(odd) { border-right: 0; border-bottom: 1px solid #e8eeeb; }
+  .application-review-card > div:last-child { border-bottom: 0; }
 }
 
 .verification-review { display: flex; flex-direction: column; gap: 1rem; }

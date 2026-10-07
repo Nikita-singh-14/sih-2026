@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   AlertCircle,
   AlertTriangle,
@@ -140,6 +140,16 @@ interface BusinessDashboardProps {
   onNavigate: (section: string) => void
 }
 
+interface VerificationApplicationDraft {
+  type: BusinessApplication['type']
+  instrumentId: string
+  instrumentName: string
+  location: string
+  feeAmount: string
+}
+
+const applicationSteps = ['Request details', 'Inspection details', 'Review & payment']
+
 export function BusinessDashboard({ currentUser, activeSection, onActionFeedback, onNavigate }: BusinessDashboardProps) {
   const [instruments, setInstruments] = useState<BusinessInstrument[]>([])
   const [applications, setApplications] = useState<BusinessApplication[]>([])
@@ -158,9 +168,36 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
 
   // Modals
   const [showNewAppModal, setShowNewAppModal] = useState(false)
+  const [applicationStep, setApplicationStep] = useState(0)
+  const [applicationDraft, setApplicationDraft] = useState<VerificationApplicationDraft>({
+    type: 'Re-verification',
+    instrumentId: '',
+    instrumentName: '',
+    location: '',
+    feeAmount: '2400',
+  })
+  const applicationStepRef = useRef<HTMLDivElement>(null)
   const [showRegisterInstModal, setShowRegisterInstModal] = useState(false)
   const [selectedCertificate, setSelectedCertificate] = useState<BusinessCertificate | null>(null)
   const [selectedAppDetail, setSelectedAppDetail] = useState<BusinessApplication | null>(null)
+
+  const openNewAppModal = () => {
+    setApplicationStep(0)
+    setApplicationDraft({
+      type: 'Re-verification',
+      instrumentId: '',
+      instrumentName: '',
+      location: '',
+      feeAmount: '2400',
+    })
+    setShowNewAppModal(true)
+  }
+
+  const validateApplicationStep = () => {
+    const fields = applicationStepRef.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select')
+    if (!fields) return false
+    return Array.from(fields).every((field) => field.reportValidity())
+  }
 
   const loadWorkflowData = async () => {
     setLoadError('')
@@ -218,7 +255,7 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
           <button className="btn-secondary-light" type="button" onClick={() => setShowRegisterInstModal(true)}>
             <Gauge size={16} /> Register Instrument
           </button>
-          <button className="btn-primary-glow" type="button" onClick={() => setShowNewAppModal(true)}>
+          <button className="btn-primary-glow" type="button" onClick={openNewAppModal}>
             <Plus size={16} /> Apply for Verification
           </button>
         </div>
@@ -403,7 +440,7 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
               <h2>Verification & Stamping Requests</h2>
               <p>Track progress of initial verification, re-verification, and post-repair inspection applications.</p>
             </div>
-            <button className="btn-primary-glow" type="button" onClick={() => setShowNewAppModal(true)}>
+            <button className="btn-primary-glow" type="button" onClick={openNewAppModal}>
               <Plus size={16} /> New Application
             </button>
           </div>
@@ -573,7 +610,7 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
                     type="button"
                     onClick={() => {
                       onActionFeedback(`Selected ${inst.id} for verification renewal`)
-                      setShowNewAppModal(true)
+                      openNewAppModal()
                     }}
                   >
                     Request Re-verification
@@ -943,25 +980,41 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
                 <span className="panel-eyebrow">NEW VERIFICATION REQUEST</span>
                 <h2 id="application-modal-title">Apply for Instrument Stamping</h2>
               </div>
-              <button type="button" className="btn-close" onClick={() => setShowNewAppModal(false)}>
+              <button type="button" className="btn-close" aria-label="Close application form" onClick={() => setShowNewAppModal(false)}>
                 <X size={18} />
               </button>
             </div>
+            <div className="application-stepper" aria-label="Application progress">
+              {applicationSteps.map((step, index) => (
+                <div
+                  className={`application-step-indicator${index === applicationStep ? ' is-current' : ''}${index < applicationStep ? ' is-complete' : ''}`}
+                  key={step}
+                  aria-current={index === applicationStep ? 'step' : undefined}
+                >
+                  <span className="application-step-number">{index < applicationStep ? <CheckCircle2 size={17} /> : index + 1}</span>
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+            <p className="application-step-count" aria-live="polite">
+              Step {applicationStep + 1} of {applicationSteps.length}: {applicationSteps[applicationStep]}
+            </p>
             <form
               className="application-form"
-              onSubmit={async (e) => {
-                e.preventDefault()
-                const form = new FormData(e.currentTarget)
+              noValidate
+              onSubmit={async (event) => {
+                event.preventDefault()
+                if (!validateApplicationStep()) return
                 setIsSaving(true)
                 try {
                   const created = await apiRequest<ApiApplication>('/business/applications', {
                     method: 'POST',
                     body: JSON.stringify({
-                      type: form.get('type'),
-                      instrumentId: form.get('instrumentId'),
-                      instrumentName: form.get('instrumentName'),
-                      location: form.get('location'),
-                      feeAmount: Number(form.get('feeAmount')) || 1500,
+                      type: applicationDraft.type,
+                      instrumentId: applicationDraft.instrumentId,
+                      instrumentName: applicationDraft.instrumentName,
+                      location: applicationDraft.location,
+                      feeAmount: Number(applicationDraft.feeAmount),
                     }),
                   })
                   const newApp = toBusinessApplication(created)
@@ -975,49 +1028,123 @@ export function BusinessDashboard({ currentUser, activeSection, onActionFeedback
                 }
               }}
             >
-              <label>
-                Application Type
-                <select name="type" required defaultValue="Re-verification">
-                  <option value="Initial verification">Initial Verification</option>
-                  <option value="Re-verification">Periodic Re-verification</option>
-                  <option value="After repair">After Repair Verification</option>
-                  <option value="Special inspection">Special Inspection</option>
-                </select>
-              </label>
+              <div className="application-step-content" ref={applicationStepRef}>
+                {applicationStep === 0 && (
+                  <>
+                    <p className="application-step-intro">Choose the verification service and the registered instrument for this request.</p>
+                    <label>
+                      Application Type
+                      <select
+                        name="type"
+                        required
+                        value={applicationDraft.type}
+                        onChange={(event) => setApplicationDraft((draft) => ({ ...draft, type: event.target.value as BusinessApplication['type'] }))}
+                      >
+                        <option value="Initial verification">Initial Verification</option>
+                        <option value="Re-verification">Periodic Re-verification</option>
+                        <option value="After repair">After Repair Verification</option>
+                        <option value="Special inspection">Special Inspection</option>
+                      </select>
+                    </label>
+                    <label>
+                      Select Instrument ID
+                      <select
+                        name="instrumentId"
+                        required
+                        value={applicationDraft.instrumentId}
+                        onChange={(event) => setApplicationDraft((draft) => ({ ...draft, instrumentId: event.target.value }))}
+                      >
+                        <option value="" disabled>Select a registered instrument</option>
+                        {instruments.map((instrument) => (
+                          <option key={instrument.id} value={instrument.id}>
+                            {instrument.id} — {instrument.type} ({instrument.serialNumber})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {instruments.length === 0 && (
+                      <p className="application-form-notice">Register an instrument before starting a verification request.</p>
+                    )}
+                  </>
+                )}
 
-              <label>
-                Select Instrument ID
-                <select name="instrumentId" required>
-                  {instruments.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.id} — {i.type} ({i.serialNumber})
-                    </option>
-                  ))}
-                </select>
-              </label>
+                {applicationStep === 1 && (
+                  <>
+                    <p className="application-step-intro">Add a short description and the premises where the officer should inspect the instrument.</p>
+                    <label>
+                      Instrument Name / Description
+                      <input
+                        name="instrumentName"
+                        required
+                        placeholder="e.g. Electronic Weighbridge 60T"
+                        value={applicationDraft.instrumentName}
+                        onChange={(event) => setApplicationDraft((draft) => ({ ...draft, instrumentName: event.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Inspection Premises Location
+                      <input
+                        name="location"
+                        required
+                        placeholder="e.g. Okhla Logistics Depot, Gate 2"
+                        value={applicationDraft.location}
+                        onChange={(event) => setApplicationDraft((draft) => ({ ...draft, location: event.target.value }))}
+                      />
+                    </label>
+                  </>
+                )}
 
-              <label>
-                Instrument Name / Description
-                <input name="instrumentName" required placeholder="e.g. Electronic Weighbridge 60T" defaultValue="Electronic Heavy Weighbridge" />
-              </label>
-
-              <label>
-                Inspection Premises Location
-                <input name="location" required placeholder="e.g. Okhla Logistics Depot, Gate 2" defaultValue="Okhla Logistics Centre Phase II" />
-              </label>
-
-              <label className="application-form-wide">
-                Estimated Stamping Fee (₹)
-                <input name="feeAmount" type="number" required defaultValue={2400} />
-              </label>
+                {applicationStep === 2 && (
+                  <>
+                    <p className="application-step-intro">Check your request details before submitting it for verification.</p>
+                    <div className="application-review-card">
+                      <div><span>Application type</span><strong>{applicationDraft.type}</strong></div>
+                      <div><span>Instrument</span><strong>{applicationDraft.instrumentName}</strong></div>
+                      <div><span>Instrument ID</span><strong>{applicationDraft.instrumentId}</strong></div>
+                      <div><span>Inspection location</span><strong>{applicationDraft.location}</strong></div>
+                    </div>
+                    <label className="application-form-wide">
+                      Estimated Stamping Fee (₹)
+                      <input
+                        name="feeAmount"
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                        value={applicationDraft.feeAmount}
+                        onChange={(event) => setApplicationDraft((draft) => ({ ...draft, feeAmount: event.target.value }))}
+                      />
+                    </label>
+                    <p className="application-payment-note">Submitting will create your application. The fee status and payment instructions will be available in your application record.</p>
+                  </>
+                )}
+              </div>
 
               <div className="modal-footer-actions application-form-wide">
                 <button type="button" className="btn-secondary-light" onClick={() => setShowNewAppModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary-glow" disabled={isSaving || instruments.length === 0}>
-                  {isSaving ? 'Submitting...' : 'Submit & Pay Verification Fee'}
-                </button>
+                {applicationStep > 0 && (
+                  <button type="button" className="btn-secondary-light" onClick={() => setApplicationStep((step) => step - 1)}>
+                    Back
+                  </button>
+                )}
+                {applicationStep < applicationSteps.length - 1 ? (
+                  <button
+                    type="button"
+                    className="btn-primary-glow"
+                    disabled={isSaving || (applicationStep === 0 && instruments.length === 0)}
+                    onClick={() => {
+                      if (validateApplicationStep()) setApplicationStep((step) => step + 1)
+                    }}
+                  >
+                    Continue
+                  </button>
+                ) : (
+                  <button type="submit" className="btn-primary-glow" disabled={isSaving}>
+                    {isSaving ? 'Submitting...' : 'Submit Application'}
+                  </button>
+                )}
               </div>
             </form>
           </div>
