@@ -1,6 +1,6 @@
 import './App.css'
-import { Bell, ChevronDown, CircleHelp, LockKeyhole, Mail, Menu, Search, Shield, ShieldCheck } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Bell, Building2, ChevronDown, CircleHelp, LockKeyhole, LogOut, Mail, MapPin, Menu, Search, Settings, Shield, ShieldCheck } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sidebar } from './components/layout/Sidebar'
 import { StatCard } from './components/dashboard/StatCard'
 import { LmoDashboard } from './components/dashboard/LmoDashboard'
@@ -211,6 +211,8 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('All statuses')
   const [feedback, setFeedback] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const topbarActionsRef = useRef<HTMLDivElement>(null)
   const [showRegistrationForm, setShowRegistrationForm] = useState(false)
   const [applicationFormType, setApplicationFormType] = useState<'Initial verification' | 'Re-verification' | null>(null)
   const [applicationRecords, setApplicationRecords] = useState(applications)
@@ -237,6 +239,30 @@ function App() {
   const isBusiness =
     currentUser?.role === 'Applicant / Business' ||
     currentUser?.rawRole === 'APPLICANT_BUSINESS'
+
+  useEffect(() => {
+    if (!notificationsOpen && !profileMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (event.target instanceof Node && !topbarActionsRef.current?.contains(event.target)) {
+        setNotificationsOpen(false)
+        setProfileMenuOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNotificationsOpen(false)
+        setProfileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [notificationsOpen, profileMenuOpen])
 
   const userJurisdiction =
     currentUser?.jurisdiction?.state ||
@@ -565,8 +591,20 @@ function App() {
   const signOut = () => {
     localStorage.removeItem('measuresure-session')
     localStorage.removeItem('measuresure-token')
+    setProfileMenuOpen(false)
     setCurrentUser(null)
   }
+
+  const profileInitials = currentUser.name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+  const profileWorkspace = isGatc
+    ? currentUser.gatc?.name || currentUser.gatcProfile?.centreName || currentUser.role
+    : currentUser.role
 
   return (
     <div className="app-shell">
@@ -588,7 +626,7 @@ function App() {
             <span className="breadcrumb-divider">/</span>
             <strong>{activeSection}</strong>
           </div>
-          <div className="topbar-actions">
+          <div className="topbar-actions" ref={topbarActionsRef}>
             <button className="icon-button" type="button" aria-label="Help" onClick={() => showFeedback('Help centre opened')}>
               <CircleHelp size={19} />
             </button>
@@ -596,7 +634,10 @@ function App() {
               className="icon-button notification-button"
               type="button"
               aria-label="Notifications"
-              onClick={() => setNotificationsOpen((open) => !open)}
+              onClick={() => {
+                setNotificationsOpen((open) => !open)
+                setProfileMenuOpen(false)
+              }}
             >
               <Bell size={19} />
               <span />
@@ -611,16 +652,83 @@ function App() {
                 ))}
               </div>
             )}
-            <button className="profile-menu" type="button" onClick={() => showFeedback('Profile menu opened')}>
+            <button
+              className="profile-menu"
+              type="button"
+              aria-label="Open profile menu"
+              aria-haspopup="dialog"
+              aria-expanded={profileMenuOpen}
+              aria-controls="profile-popover"
+              onClick={() => {
+                setProfileMenuOpen((open) => !open)
+                setNotificationsOpen(false)
+              }}
+            >
               <div className="avatar">
-                {isLmo ? 'LM' : isGatc ? 'GO' : currentUser.name.slice(0, 2).toUpperCase()}
+                {profileInitials || 'U'}
               </div>
               <div className="profile-copy">
                 <strong>{currentUser.name}</strong>
-                <span>{isGatc ? (currentUser.gatc?.name || 'GATC Officer') : currentUser.role}</span>
+                <span>{profileWorkspace}</span>
               </div>
               <ChevronDown size={16} />
             </button>
+            {profileMenuOpen && (
+              <section className="profile-popover" id="profile-popover" role="dialog" aria-label="Profile menu">
+                <div className="profile-popover-header">
+                  <div className="avatar profile-popover-avatar">{profileInitials || 'U'}</div>
+                  <div className="profile-popover-identity">
+                    <strong>{currentUser.name}</strong>
+                    <span>{currentUser.email}</span>
+                  </div>
+                </div>
+                <div className="profile-details">
+                  <div className="profile-detail">
+                    <ShieldCheck size={15} />
+                    <span>{currentUser.role}</span>
+                  </div>
+                  {isGatc && (
+                    <div className="profile-detail">
+                      <Building2 size={15} />
+                      <span>{profileWorkspace}</span>
+                    </div>
+                  )}
+                  {currentUser.gatcProfile?.accreditationNo && (
+                    <div className="profile-detail profile-detail-secondary">
+                      <span>Accreditation no.</span>
+                      <strong>{currentUser.gatcProfile.accreditationNo}</strong>
+                    </div>
+                  )}
+                  {(isLmo || currentUser.jurisdiction?.district || currentUser.jurisdiction?.state) && (
+                    <div className="profile-detail">
+                      <MapPin size={15} />
+                      <span>
+                        {[currentUser.jurisdiction?.district, currentUser.jurisdiction?.state].filter(Boolean).join(', ') ||
+                          userJurisdiction}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="profile-menu-actions">
+                  {(currentUser.role === 'State Administrator' || isBusiness) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSectionChange('Settings')
+                        setProfileMenuOpen(false)
+                      }}
+                    >
+                      <Settings size={16} />
+                      Settings
+                    </button>
+                  )}
+                  <button type="button" onClick={signOut}>
+                    <LogOut size={16} />
+                    Sign out
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
         </header>
 
